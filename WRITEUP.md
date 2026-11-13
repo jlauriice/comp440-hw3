@@ -54,7 +54,7 @@ Which lookup would you have done differently, and how? If none, which one surpri
 Describe Wikidata briefly. Why may it be important to this task?
 
 > quoting from above: wikidata which I suppose is like the metadata for every article including sort of the facts behind the wikipedia page in question, sort of like when you take a photo it has metadata of location phone etc. 
-
+>
 > After asking claude about it, my initial hunch was correct, it's facts stored in three parts, an item, a property and a value. And this is very important to the task because it allows facts to be sorted faster and for us to know which facts are presented in each wikipedia page and which are not. 
 
 # Part 1: How the agent works

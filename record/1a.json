@@ -1,0 +1,58 @@
+{
+  "step": "1a",
+  "title": "Write the loop",
+  "session_id": null,
+  "conversations": [
+    "f989412e-676c-4bba-afc0-eda645d1d2c3"
+  ],
+  "complete": false,
+  "checkpoints": [
+    {
+      "text": "Your loop in my_loop.py passes every rule of the check",
+      "reached": false
+    },
+    {
+      "text": "Your answers are in WRITEUP.md",
+      "reached": false
+    }
+  ],
+  "answers": [
+    {
+      "question": "What does your loop send to the model on each turn? Give the line numbers in `my_loop.py`.",
+      "answer": "",
+      "written_by": null
+    },
+    {
+      "question": "What are the ways your loop can end? Give the line number of each.",
+      "answer": "",
+      "written_by": null
+    },
+    {
+      "question": "Now open `reference_loop.py` and compare it with your loop. Describe one difference in implementation and the resulting effects on agent behavior.",
+      "answer": "",
+      "written_by": null
+    }
+  ],
+  "record": [
+    {
+      "kind": "asked",
+      "text": "show me the four tools in agent.py",
+      "time": "2026-11-13T14:55:04-06:00"
+    },
+    {
+      "kind": "ran",
+      "text": "Find where the tools are defined in agent.py",
+      "status": "ok",
+      "file": null,
+      "time": "2026-11-13T14:55:05-06:00"
+    }
+  ],
+  "told_the_page": [
+    {
+      "time": "2026-11-13T14:54:41-06:00",
+      "kind": "status",
+      "text": "Ready to read agent.py with you"
+    }
+  ],
+  "turns": 2
+}

@@ -29,12 +29,7 @@
     },
     {
       "question": "Describe Wikidata briefly. Why may it be important to this task?",
-      "answer": "quoting from above: wikidata which I suppose is like the metadata for every article including sort of the facts behind the wikipedia page in question, sort of like when you take a photo it has metadata of location phone etc.",
-      "written_by": "the student"
-    },
-    {
-      "question": "Answer",
-      "answer": "After asking claude about it, my initial hunch was correct, it's facts stored in three parts, an item, a property and a value. And this is very important to the task because it allows facts to be sorted faster and for us to know which facts are presented in each wikipedia page and which are not.",
+      "answer": "quoting from above: wikidata which I suppose is like the metadata for every article including sort of the facts behind the wikipedia page in question, sort of like when you take a photo it has metadata of location phone etc. \n\nAfter asking claude about it, my initial hunch was correct, it's facts stored in three parts, an item, a property and a value. And this is very important to the task because it allows facts to be sorted faster and for us to know which facts are presented in each wikipedia page and which are not.",
       "written_by": "the student"
     }
   ],
@@ -69,6 +64,11 @@
       "kind": "asked",
       "text": "explain what Wikidata is",
       "time": "2026-11-13T01:46:49-06:00"
+    },
+    {
+      "kind": "asked",
+      "text": "check that my 0d answers are in WRITEUP.md",
+      "time": "2026-11-13T14:53:51-06:00"
     }
   ],
   "told_the_page": [
@@ -83,5 +83,5 @@
       "text": "Waiting for your answers in WRITEUP.md"
     }
   ],
-  "turns": 3
+  "turns": 4
 }

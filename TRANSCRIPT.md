@@ -25,7 +25,7 @@ clear
 <!-- transcript-session: f989412e-676c-4bba-afc0-eda645d1d2c3 | 2026-11-13T07:17:33.305Z -->
 ## Session `f989412e` — 2026-11-13 07:17:33
 
-*11 user turns. Tool output shortened; reasoning omitted.*
+*14 user turns. Tool output shortened; reasoning omitted.*
 
 **User:**
 Start step 0a.
@@ -412,6 +412,180 @@ The agent's `wikidata` tool asks Wikidata for one property of one item. It sends
 
 Why it may matter for this task is your question to answer. That goes in `WRITEUP.md`, under 0d, in your editor.
 
+**User:**
+check that my 0d answers are in WRITEUP.md
+
+**Claude:**
+- 🔧 `Read` — /Users/laurice/Documents/Collective Intelligence/comp440-hw3/WRITEUP.md
+
+  ```
+  44	## 0d. Run the agent and read its trace
+  45	
+  46	In one or two sentences, how did the agent get from the claim to its verdict? Point to the trace entries by their numbers.
+  47	
+  48	> In number 1, the agent searched up the composer of the persian surgery dervishes, which was really smart to begin with. Then in 2 it read the name, after finding that in 3 it goes to the wikid...
+  49	
+  50	Which lookup would you have done differently, and how? If none, which one surprised you?
+  51	
+  52	> I was surprised at the separate reading of the page on the author Terry Riley even though the agent had already figured it out. That was an extra layer that I don't think I would've done. I wo...
+  53	
+  54	Describe Wikidata briefly. Why may it be important to this task?
+  55	
+  ... (6 more lines)
+  ```
+
+All three 0d answers are in `WRITEUP.md`, on lines 48, 52, and 56 to 58. The run is saved in `runs/part0/` too.
+
+There's one formatting problem in the third answer. The top of `WRITEUP.md` says a blank line ends an answer, and that to start a new paragraph you put a line with just `>` between the two. Line 57 is empty. So the page may count only line 56 as your answer and ignore line 58. To keep both paragraphs, type `>` on line 57.
+
+One thing about what I said: I explained Wikidata as a database of facts stored as item, property and value. I didn't compare it to a photo's metadata or to the facts behind each article. You can decide whether that changes anything in your answer.
+
+Step 1a, "Write the loop", is next. To start it, paste its prompt from the homework page into this chat.
+
+**User:**
+Start step 1a. Read .workbench/1a.md and follow it from now on, in place of your instructions for any other step.
+
+**Claude:**
+- 🔧 `Read` — /Users/laurice/Documents/Collective Intelligence/comp440-hw3/.workbench/1a.md
+
+  ```
+  250	# This session: one step of the assignment
+  251	
+  252	You help with one step, and only this one: 1a, "Write the loop", in Part 1 (How the agent works).
+  253	What this step is, as the page says it under the step's title: In this step you write the agent loop yourself. The loop asks the model for lookups, runs the lookups it chooses, sends back what ...
+  254	The student talks to you in a terminal. Beside it, a web page shows every step of the assignment,
+  255	each with its own Claude Code session, and this step's instructions, which say:
+  256	
+  257	<step-instructions>
+  258	In this step you write the agent loop yourself. The loop asks the model for lookups, runs the lookups it
+  259	chooses, sends back what they return, and stops.
+  260	
+  261	**Words in this step:** A *tool* is one of the four things the agent can call: `search`, `read`,
+  ... (253 more lines)
+  ```
+
+- 🔧 `Bash` — python3 .workbench/page.py 1a status "Ready to read agent.py with you"
+
+  ```
+  The page now says: Ready to read agent.py with you
+  ```
+
+This session is now on step 1a.
+
+In this step you write the agent's loop yourself, in `my_loop.py`. The loop asks the model for lookups, runs the ones it picks, sends back what they return, and stops. The first task is to read `agent.py`: its four tools, the evidence check and `finish()`. When you're ready, ask me to show you any part of `agent.py`, for example "show me the four tools".
+
+**User:**
+show me the four tools in agent.py
+
+**Claude:**
+- 🔧 `Bash` — grep -n "TOOLS\|\"name\"\|def lookup" agent.py
+
+  ```
+  35:TOOLS = [
+  37:        "name": "search",
+  47:        "name": "read",
+  58:        "name": "wikidata",
+  69:        "name": "answer",
+  ```
+
+- 🔧 `Read` — /Users/laurice/Documents/Collective Intelligence/comp440-hw3/agent.py
+
+  ```
+  30	# report cost, once your loop counts tokens (extra credit, step 3b). Input, output.
+  31	PRICE = (0.10, 0.50)
+  32	
+  33	# ---------- the tools Claude can ask for ----------
+  34	
+  35	TOOLS = [
+  36	    {
+  37	        "name": "search",
+  38	        "description": "Search Wikipedia. Returns the top page titles, each with a short snippet.",
+  39	        "input_schema": {
+  40	            "type": "object",
+  41	            "properties": {"query": {"type": "string"}},
+  ... (58 more lines)
+  ```
+
+```python
+33	# ---------- the tools Claude can ask for ----------
+34	
+35	TOOLS = [
+36	    {
+37	        "name": "search",
+38	        "description": "Search Wikipedia. Returns the top page titles, each with a short snippet.",
+39	        "input_schema": {
+40	            "type": "object",
+41	            "properties": {"query": {"type": "string"}},
+42	            "required": ["query"],
+43	            "additionalProperties": False,
+44	        },
+45	    },
+46	    {
+47	        "name": "read",
+48	        "description": ("Read one section of a Wikipedia page. With no section, returns the "
+49	                        "opening paragraphs and the list of the page's sections."),
+50	        "input_schema": {
+51	            "type": "object",
+52	            "properties": {"title": {"type": "string"}, "section": {"type": "string"}},
+53	            "required": ["title"],
+54	            "additionalProperties": False,
+55	        },
+56	    },
+57	    {
+58	        "name": "wikidata",
+59	        "description": ("Look up one structured fact on Wikidata, Wikipedia's sister site. "
+60	                        "Example: entity 'Robert Zemeckis', property 'place of birth'."),
+61	        "input_schema": {
+62	            "type": "object",
+63	            "properties": {"entity": {"type": "string"}, "property": {"type": "string"}},
+64	            "required": ["entity", "property"],
+65	            "additionalProperties": False,
+66	        },
+67	    },
+68	    {
+69	        "name": "answer",
+70	        "description": ("Give your final verdict and end the check. A verdict of supported or "
+71	                        "refuted needs at least one evidence item. Each evidence item must be "
+72	                        "copied word for word from a read() or wikidata() result in this check."),
+73	        "input_schema": {
+74	            "type": "object",
+75	            "properties": {
+76	                "verdict": {"type": "string", "enum": VERDICTS},
+77	                "evidence": {"type": "array", "items": {"type": "string"}},
+78	                "explanation": {"type": "string"},
+79	            },
+80	            "required": ["verdict", "evidence", "explanation"],
+81	            "additionalProperties": False,
+82	        },
+83	    },
+84	]
+85	
+86	
+87	def run_tool(name, args):
+88	    """Run one lookup tool and return its text result."""
+89	    if name == "search":
+90	        return wiki.search(args["query"])
+91	    if name == "read":
+92	        return wiki.read(args["title"], args.get("section"))
+93	    if name == "wikidata":
+94	        return wiki.wikidata(args["entity"], args["property"])
+95	    return f"There is no tool called {name!r}."
+```
+
+Where the comment on line 33 says "Claude", it means the model, Claude Haiku.
+
+`TOOLS` is the list your loop sends with every call. Each tool has three parts:
+
+- a `name`;
+- a `description`, which the model reads to decide when to use the tool;
+- an `input_schema`, which lists the inputs the model must fill in.
+
+`search` takes a query. `read` takes a title and, if wanted, a section. `wikidata` takes an entity and a property. `answer` is not a lookup. It is how the model gives its verdict, evidence and explanation.
+
+`run_tool` (lines 87–95) actually runs a lookup on Wikipedia or Wikidata. In your loop, you call it through `lookup(name, input)`.
+
+Next, you can ask me to show the evidence check or `finish()`.
+
 <!-- end-session: f989412e-676c-4bba-afc0-eda645d1d2c3 -->
 
 # 0b. Ask the model to assess a claim without tools
@@ -425,6 +599,10 @@ This step was done in the conversation under 0a, session `f989412e`, from the me
 # 0d. Run the agent and read its trace
 
 This step was done in the conversation under 0a, session `f989412e`, from the message “Start step 0d.”
+
+# 1a. Write the loop
+
+This step was done in the conversation under 0a, session `f989412e`, from the message “Start step 1a.”
 
 # Other Claude sessions in this folder
 
