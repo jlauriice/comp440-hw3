@@ -59,6 +59,11 @@
         "Your answers are in WRITEUP.md"
       ],
       "time": "2026-11-13T01:37:05-06:00"
+    },
+    {
+      "kind": "asked",
+      "text": "explain what Wikidata is",
+      "time": "2026-11-13T01:46:49-06:00"
     }
   ],
   "told_the_page": [
@@ -73,5 +78,5 @@
       "text": "Waiting for your answers in WRITEUP.md"
     }
   ],
-  "turns": 2
+  "turns": 3
 }

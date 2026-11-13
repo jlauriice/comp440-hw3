@@ -25,7 +25,7 @@ clear
 <!-- transcript-session: f989412e-676c-4bba-afc0-eda645d1d2c3 | 2026-11-13T07:17:33.305Z -->
 ## Session `f989412e` — 2026-11-13 07:17:33
 
-*10 user turns. Tool output shortened; reasoning omitted.*
+*11 user turns. Tool output shortened; reasoning omitted.*
 
 **User:**
 Start step 0a.
@@ -395,6 +395,22 @@ Saved to runs/part0/agent-1794555419.json
 ```
 
 The run is saved in `runs/part0/`. Next, read the trace one entry at a time. "Open these results" under 0d on the homework page shows each lookup in full. Then type your answers to this step's three questions in `WRITEUP.md`, in your editor. You don't need to reply here, but you can ask me to explain anything in the trace, or what Wikidata is.
+
+**User:**
+explain what Wikidata is
+
+**Claude:**
+Wikidata (wikidata.org) is a free database of facts. Volunteers edit it, and the Wikimedia Foundation runs it, the same organization that runs Wikipedia.
+
+Wikipedia stores facts as sentences in articles. Wikidata stores each fact in three parts:
+
+- an **item**: a thing, such as a person, a place or a recording. Each item has an ID that starts with Q, such as `Q365243`;
+- a **property**: a kind of fact about the item, such as "date of birth";
+- a **value**: the answer for that item, such as a date.
+
+The agent's `wikidata` tool asks Wikidata for one property of one item. It sends a name and a property, and it gets back one line: the item's name, its Q-number, the property and the value. Entry 3 of your trace has that shape.
+
+Why it may matter for this task is your question to answer. That goes in `WRITEUP.md`, under 0d, in your editor.
 
 <!-- end-session: f989412e-676c-4bba-afc0-eda645d1d2c3 -->
 
