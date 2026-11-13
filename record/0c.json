@@ -1,0 +1,77 @@
+{
+  "step": "0c",
+  "title": "Give it one search",
+  "session_id": null,
+  "conversations": [
+    "f989412e-676c-4bba-afc0-eda645d1d2c3"
+  ],
+  "complete": true,
+  "checkpoints": [
+    {
+      "text": "The one-search baseline's answer is saved in runs/part0/",
+      "reached": true
+    },
+    {
+      "text": "Your answers are in WRITEUP.md",
+      "reached": true
+    }
+  ],
+  "answers": [
+    {
+      "question": "Which Wikipedia page did it read? Quote the line of the output that shows it.",
+      "answer": "2. read(title='Frank Zappa')\n      -> Page: Frank Zappa Frank Vincent Zappa (December 21, 1940 – December 4, 1993) was an American musician, actor, satirist, filmmaker, and activist. In a career ..",
+      "written_by": "the student"
+    },
+    {
+      "question": "Did that page settle the claim correctly? If not, why do you think the search led there?",
+      "answer": "The page did not settle the claim correctly because this search does not mention Persian Surgery Deriveshes. Instead of searching that up, the model thought it better to search up a man who might or might not have composed it. Not so wise when you have just one search query.",
+      "written_by": "the student"
+    }
+  ],
+  "record": [
+    {
+      "kind": "asked",
+      "text": "run the one-search baseline on the claim",
+      "time": "2026-11-13T01:25:52-06:00"
+    },
+    {
+      "kind": "ran",
+      "text": "Ran check.py --method one-search",
+      "status": "ok",
+      "file": "runs/part0/one-search-1794554755.json",
+      "time": "2026-11-13T01:25:54-06:00"
+    },
+    {
+      "kind": "said",
+      "verdict": "doesn't say",
+      "reason": "The provided Wikipedia text does not mention \"Persian Surgery Dervishes\" or its composer, and it gives Frank Zappa's birth date as December 21, 1940, not June 24, 1935.",
+      "lookups": 2,
+      "what": "Ran check.py --method one-search",
+      "file": "runs/part0/one-search-1794554755.json",
+      "expected": null,
+      "reached": [
+        "The one-search baseline's answer is saved in runs/part0/",
+        "Your answers are in WRITEUP.md"
+      ],
+      "time": "2026-11-13T01:26:00-06:00"
+    },
+    {
+      "kind": "asked",
+      "text": "check that my 0c answers are in WRITEUP.md",
+      "time": "2026-11-13T01:36:14-06:00"
+    }
+  ],
+  "told_the_page": [
+    {
+      "time": "2026-11-13T01:24:47-06:00",
+      "kind": "status",
+      "text": "Waiting for you to ask for the one-search run"
+    },
+    {
+      "time": "2026-11-13T01:26:01-06:00",
+      "kind": "status",
+      "text": "Waiting for your answers in WRITEUP.md"
+    }
+  ],
+  "turns": 3
+}

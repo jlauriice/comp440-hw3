@@ -1,0 +1,30 @@
+{
+ "claim": "The composer of \"Persian Surgery Dervishes\" was born on June 24, 1935.",
+ "verdict": "doesn't say",
+ "evidence": [],
+ "explanation": "The provided Wikipedia text does not mention \"Persian Surgery Dervishes\" or its composer, and it gives Frank Zappa's birth date as December 21, 1940, not June 24, 1935.",
+ "trace": [
+  {
+   "tool": "search",
+   "input": {
+    "query": "Frank Zappa"
+   },
+   "result": "1. Frank Zappa: Frank Vincent Zappa (December 21, 1940\u00a0\u2013 December 4, 1993) was an American musician, actor, satirist, filmmaker, and activist. In a career spanning more\n2. Frank Zappa discography: albums by Frank Zappa, including all those credited to the Mothers of Invention. During his lifetime, Zappa released 62 albums. Since 1994, the Zappa Family\n3. Dweezil Zappa: the son of musical composer and performer Frank Zappa. Exposed to the music industry from an early age, Zappa developed a strong affinity for playing the\n4. Gail Zappa: Adelaide Gail Zappa (n\u00e9e Sloatman; January 1, 1945 \u2013 October 7, 2015) was the wife of musician and composer Frank Zappa and the trustee of the Zappa Family Trust\n5. Moon Zappa: Moon Unit Zappa (born September 28, 1967) is an American actress, singer, and author. She is a daughter of musician Frank Zappa. Moon Zappa was born in"
+  },
+  {
+   "tool": "read",
+   "input": {
+    "title": "Frank Zappa"
+   },
+   "result": "Page: Frank Zappa\n\nFrank Vincent Zappa (December 21, 1940 \u2013 December 4, 1993) was an American musician, actor, satirist, filmmaker, and activist. In a career spanning more than 30 years, Zappa composed rock, pop, jazz, jazz fusion, orchestral and musique concr\u00e8te works; he additionally produced nearly all the 60-plus albums he released with his band the Mothers of Invention and as a solo artist. His discography is characterized by nonconformity, improvisation, sonic experimentation, musical virtuosity and satire of American culture. Zappa also directed feature-length films and music videos, and designed album covers. He is considered one of the most innovative and stylistically diverse musicians of the 20th century.\nAs a mostly self-taught composer and performer, Zappa had diverse musical influences that led him to create music that was sometimes difficult to categorize. While in his teens, he acquired a taste for 20th-century classical modernism, African-American rhythm and blues, and doo-wop music. He began writing classical music in high school, while simultaneously playing drums in rhythm-and-blues bands, later switching to electric guitar. His debut studio album with the Mothers of Invention, Freak Out! (1966), combined satirical but seemingly conventional rock-and-roll songs with extended sound collages. He continued this eclectic and experimental approach throughout his career.\nZappa's output is unified by a conceptual continuity he termed \"Project/Object\", with numerous musical phrases, ideas and characters reappearing throughout his albums. His lyrics reflected his iconoclastic views of established social and political processes, structures and movements, often humorously so, and he has been described as the \"godfather\" of comedy rock. He was a strident critic of mainstream education and organized religion, and a forthright and passionate advocate for freedom of speech, self-education, political participation and the abolition of censorship. Unlike many other rock musicians of his generation, he disapproved of recreational drug use, but supported decriminalization and regulation.\nZappa was a highly productive and prolific musician with a controversial critical standing; supporters of his music admired its compositional complexity, while detractors found it lacking emotional depth. He had greater commercial success outside the U.S., particularly in Europe. Though he worked as an independent artist, Zappa mostly relied on distribution agreements he had negotiated with the major record labels. He remains a major influence on musicians. His many honors include his posthumous 1995 induction into the Rock and Roll Hall of Fame and the 1997 Grammy Lifetime Achievement Award.\n\nSections: Childhood, First musical interests, Studio Z, Formation, Signing to Verve Records, Move to New York and beginning of Straight and Bizarre Records, Return to California and breakup, Rebirth of the Mothers and filmmaking, Accident, attack, and aftermath, Waka/Jawaka and The Grand Wazoo, Beginning of DiscReet Records and commercial peak, Business breakups and continued touring, Zappa Records, Beginning of Barking Pumpkin Records, \"Valley Girl\" and classical performances, Beginning of Synclavier works, Merchandising, Digital medium and last tour, Health deterioration, Death, Musical style and classification, Influences, Project/Object, Guitar playing, Tape manipulation, Family, Captain Beefheart, Drugs, Government and religion, Anti-censorship activism, Legacy, Acclaim and honors, Grammy Awards, Artists influenced by Zappa, References in arts and sciences, Films, Discography, Tours, Books, See also, External links"
+  }
+ ],
+ "steps": 2,
+ "tokens": {
+  "input": 1426,
+  "output": 611
+ },
+ "cost_usd": 0.000448,
+ "seconds": 4.5773608684539795,
+ "method": "one-search"
+}

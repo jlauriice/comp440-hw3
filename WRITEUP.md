@@ -1,6 +1,6 @@
 # COMP 440 HW3 write-up
 
-Name:
+Name: Laurice Jimu
 
 Type each answer after the `>` under its question. An answer can run over several lines, but a blank line
 ends it: to start a new paragraph, put a line with just `>` between the two. In a table, fill every cell
@@ -28,31 +28,32 @@ There is nothing to write for this step except your name, after `Name:` at the t
 
 What verdict did the model give (*supported*, *refuted* or *doesn't say*), and what reason did it give? Quote the lines of the output that show them.
 
->
+> doesn't say, It's explanation was: " I can't confirm from memory who composed "Persian Surgery Dervishes" or what that composer's birth date is, so I can't determine from English Wikipedia whether the claim holds." 
 
 ## 0c. Give it one search
 
 Which Wikipedia page did it read? Quote the line of the output that shows it.
 
->
+> 2. read(title='Frank Zappa')
+      -> Page: Frank Zappa Frank Vincent Zappa (December 21, 1940 – December 4, 1993) was an American musician, actor, satirist, filmmaker, and activist. In a career ..
 
 Did that page settle the claim correctly? If not, why do you think the search led there?
 
->
+> The page did not settle the claim correctly because this search does not mention Persian Surgery Deriveshes. Instead of searching that up, the model thought it better to search up a man who might or might not have composed it. Not so wise when you have just one search query. 
 
 ## 0d. Run the agent and read its trace
 
 In one or two sentences, how did the agent get from the claim to its verdict? Point to the trace entries by their numbers.
 
->
+> In number 1, the agent searched up the composer of the persian surgery dervishes, which was really smart to begin with. Then in 2 it read the name, after finding that in 3 it goes to the wikidata which I suppose is like the metadata for every article including sort of the facts behind the wikipedia page in question, sort of like when you take a photo it has metadata of location phone etc. I thought that step was pretty neat and smart. Then to confirm the claim, in 4 it read Terry's wikipedia page and once it found Persian Surgery Dervishes in that the verdict was supported and hence 5. 
 
 Which lookup would you have done differently, and how? If none, which one surprised you?
 
->
+> I was surprised at the separate reading of the page on the author Terry Riley even though the agent had already figured it out. That was an extra layer that I don't think I would've done. I would've taken what I found in the wikidata at face value (that's if I even knew how to find the wikidata to begin with)
 
 Describe Wikidata briefly. Why may it be important to this task?
 
->
+> quoting from above: wikidata which I suppose is like the metadata for every article including sort of the facts behind the wikipedia page in question, sort of like when you take a photo it has metadata of location phone etc.
 
 # Part 1: How the agent works
 
