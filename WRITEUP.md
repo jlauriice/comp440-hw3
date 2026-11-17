@@ -63,11 +63,16 @@ Describe Wikidata briefly. Why may it be important to this task?
 
 What does your loop send to the model on each turn? Give the line numbers in `my_loop.py`.
 
->
+> Lines 113–114 , It sends the model type, token limit, system instructions, list of tools available and running message history  
 
 What are the ways your loop can end? Give the line number of each.
 
->
+> It can end everytime we have a return finish(...) which I saw 5, 
+> Lines 120 - the model refuses to answer prompt
+> Lines 123 - not sure why here 
+> Lines 137 - 138 everything seems to be okay, and model manages to respond convincingly
+> Lines 143-144 the model's answer fails validation Max_Rejected times
+> Line 151 , my twist, model runs out of budget for lookups
 
 Now open `reference_loop.py` and compare it with your loop. Describe one difference in implementation and the resulting effects on agent behavior.
 
