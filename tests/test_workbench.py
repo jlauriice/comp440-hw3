@@ -6,6 +6,7 @@ student's fork, and saved Claude Code conversations under a temporary CLAUDE_CON
 """
 
 import json
+import os
 import socket
 import time
 import subprocess
@@ -20,7 +21,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from workbench import claude_md, labels, server, steps, transcript  # noqa: E402
+from workbench import claude_md, labels, server, steps, transcript, updates  # noqa: E402
 from workbench.sessions import stamp  # noqa: E402
 
 STEPS = '''
@@ -426,6 +427,31 @@ def test_every_step_of_the_real_homework_has_a_command_and_a_prompt(tmp_path):
     assert json.loads(json.dumps(app.assignment()))["steps"]
 
 
+def test_each_steps_prompt_gives_the_time_the_page_shows(tmp_path):
+    """The flow simulations of Nov 14: asked "how long is this one", a tutor said the instructions
+    give no estimate, though the page says "about 35 minutes" beside the title. The step's file
+    takes its time from the same `minutes`, so the two cannot drift; a step with none says nothing."""
+    for name in ("steps.toml", "WRITEUP.md", "README.md"):
+        (tmp_path / name).write_text((ROOT / name).read_text())
+    (tmp_path / "instructions").mkdir()
+    for f in (ROOT / "instructions").glob("*.md"):
+        (tmp_path / "instructions" / f.name).write_text(f.read_text())
+    git(tmp_path, "init", "-q", "-b", "main")
+    app = server.App(tmp_path)
+    for s in app.a.steps:
+        app.hub.sessions[s.id].prepare()
+        prompt = (app.hub.dir / f"{app.a.label(s)}.md").read_text()
+        assert s.minutes, s.id
+        assert (f"This step takes about {s.minutes} minutes, as the page says. "
+                "Say so if the student asks.") in prompt, s.id
+        assert prompt.count("This step takes about") == 1, s.id
+    (tmp_path / "small").mkdir()
+    h = homework(tmp_path / "small")                         # the small homework gives no minutes
+    small = server.App(h.student)
+    small.hub.sessions["0b"].prepare()
+    assert "This step takes about" not in (small.hub.dir / "0b.md").read_text()
+
+
 def test_a_checkpoint_with_a_file_or_answers_is_ticked_only_by_them(tmp_path):
     h = homework(tmp_path)
     app = server.App(h.student)
@@ -698,7 +724,7 @@ def test_every_steps_settings_allow_every_steps_shell_commands_and_share_the_hoo
         allow = settings["permissions"]["allow"]
         assert shells <= set(allow), s.id
         assert ("Edit(instructions.md)" in allow) == (s.id == "3b"), s.id
-        assert ("Edit(my_loop.py)" in allow) == (s.id == "1a"), s.id
+        assert ("Edit(my_loop.py)" in allow) == (s.id in ("1a", "3b")), s.id
         hooks.add(json.dumps(settings["hooks"], sort_keys=True))
     assert len(hooks) == 1                                   # the same guard for every step
 
@@ -716,6 +742,7 @@ def test_the_page_offers_both_ways_and_only_the_command_for_the_first_step(tmp_p
     prompt = " ".join((app.hub.dir / "0b.md").read_text().split())
     assert "In a session that was on another step, first say in one line that you are now on step 0b." in prompt
     assert "its prompt, pasted into this chat, moves this session onto it" in prompt
+    assert "moves this session onto it, and its command starts a new session for it." in prompt
     node = node_or_none()
     if not node:
         return
@@ -757,6 +784,28 @@ def test_the_name_has_its_own_plain_now_line(tmp_path):
     assert "Paste this into a terminal in your homework folder, not into a Claude chat. It starts a new " \
            "conversation for this step every time you run it. If another Claude session is open in that " \
            "terminal, type /exit first." in js
+
+
+def test_a_question_claude_pastes_into_says_where_it_goes_not_that_the_student_types_it(tmp_path):
+    """The flow simulations of Nov 14: under 1b's "List your lookups ... Ask Claude to paste every
+    column but the last ..." the page said "Type it in WRITEUP.md, under 1b.", though Claude fills
+    those columns. Such a question's line and the record's "Now:" line say where it goes; a question
+    the student answers keeps "Type it" and "Write your answer"."""
+    pasted = "Ask Claude to paste what it printed into the empty block below."
+    writeup = WRITEUP.replace("Name:", "Name: Sam").replace("What did it say?\n\n>", f"{pasted}\n\n```\n```")
+    h = homework(tmp_path, {"WRITEUP.md": writeup})
+    app = server.App(h.student)
+    rec = app.hub.sessions["0b"].record()
+    assert rec["now"] == {"question": pasted, "how": "It goes in WRITEUP.md, under 0b."}
+    todo = {x["question"]: x["todo"] for c in rec["checkpoints"] for x in c["slots"]}
+    assert todo == {pasted: "Not written yet. It goes in WRITEUP.md, under 0b.",
+                    "How much would you trust it, and why?": "Not written yet. Type it in WRITEUP.md, under 0b."}
+    (h.student / "WRITEUP.md").write_text(writeup.replace("```\n```", "```\nVerdict: supported\n```"))
+    assert app.hub.sessions["0b"].record()["now"] == {
+        "question": "How much would you trust it, and why?", "how": "Write your answer in WRITEUP.md, under 0b, in your editor."}
+    # In the real write-up, the questions Claude pastes into are 1b's table and 2a's report, and no other.
+    real = steps.read_slots((ROOT / "WRITEUP.md").read_text(encoding="utf-8"))
+    assert sorted(k.split(" / ")[1][:2] for k in real if "Ask Claude to paste" in k.split(" / ")[-1]) == ["1b", "2a"]
 
 
 def test_a_step_can_carry_a_command_the_student_runs_themselves(tmp_path):
@@ -1687,9 +1736,17 @@ def test_a_true_conflict_changes_nothing_and_says_so(tmp_path):
     assert not (h.student / ".git/MERGE_HEAD").exists()
     assert git(h.student, "status", "--porcelain") == ""                 # nothing half-merged
     assert subjects(h.student)[0] == "Save work before update"
-    text = app.notices["update-failed"]["text"]
+    failed = app.notices["update-failed"]
+    text = failed["text"]
     assert "could not be applied automatically" in text and "nothing in your files was changed" in text
-    assert "#comp440-f26" in text
+    # How to update by hand (Nov 16): stop the page, run claude here, say "update my homework"; Slack if not.
+    assert text.endswith("You can update by hand, with Claude, in three steps:")
+    assert failed["items"] == server.UPDATE_BY_HAND and len(failed["items"]) == 3
+    assert "Ctrl-C" in failed["items"][0] and "run claude" in failed["items"][1]
+    assert '"update my homework"' in failed["items"][2]
+    assert failed["after"] == "If that does not work, post in #comp440-f26 on Slack."
+    js = (ROOT / "workbench/static/app.js").read_text()
+    assert "x.items ?" in js and "x.after ? `<p>${esc(x.after)}</p>`" in js     # the page shows all three parts
     assert not any(x["kind"] == "update" for x in app.current_notices())   # the button is gone
     upstream_commit(h, "README.md", "# HW9\n\nNewer.\n", "A newer fix")        # until there is more
     app.updates.fetch()
@@ -1739,6 +1796,137 @@ def test_after_an_update_the_steps_are_read_again_and_a_code_change_asks_for_a_r
     app.updates.fetch()
     assert app.update() == {"ok": True}
     assert "Restart it: press Ctrl-C" in app.notices["restart"]["text"]
+
+
+def test_nothing_is_saved_or_pushed_while_a_merge_is_half_done(tmp_path, monkeypatch):
+    """Nov 15: a merge the student started by hand stopped on a conflict, and the page's next save
+    concluded it, conflict markers and all, and pushed it. Now the page holds off, says so in one
+    line, and saves again by itself once the merge is undone (or finished)."""
+    monkeypatch.setattr(server, "SETTLE", 0)
+    h = homework(tmp_path)
+    app = server.App(h.student, upstream=str(h.cls))
+    app.updates.setup()
+    finish_part0(h.student)
+    app.commit_finished_parts()
+    assert subjects(h.student)[0] == subjects(h.fork, "main")[0] == "Part 0 done"
+    upstream_commit(h, "WRITEUP.md", WRITEUP.replace("What did it say?\n\n>", "What did it say?\n\n> (write here)"),
+                    "Prompt 0b")
+    app.updates.fetch()
+    merge = subprocess.run(["git", "merge", "--no-commit", "upstream/main"], cwd=h.student, capture_output=True)
+    assert merge.returncode == 1 and "<<<<<<<" in (h.student / "WRITEUP.md").read_text()
+    for _ in range(2):
+        app.tick()
+    assert app.save("Part 0 updated") is False
+    app.push()
+    assert subjects(h.student)[0] == subjects(h.fork, "main")[0] == "Part 0 done"     # nothing committed or pushed
+    assert (h.student / ".git/MERGE_HEAD").exists()                                   # the merge is still the student's
+    notice = next(x for x in app.current_notices() if x["kind"] == "paused")
+    assert notice["text"] == ("Git is in the middle of a merge in this folder, so the page is not saving or pushing "
+                              "your work. It starts again by itself once that is finished or undone.")
+    git(h.student, "merge", "--abort")
+    (h.student / "WRITEUP.md").write_text(FILLED.replace("it guessed", "it guessed, I think"))
+    app.tick()
+    assert not any(x["kind"] == "paused" for x in app.current_notices())
+    assert subjects(h.student)[0] == subjects(h.fork, "main")[0] == "Part 0 updated"
+    assert "<<<<<<<" not in git(h.student, "show", "HEAD:WRITEUP.md")
+
+
+@pytest.mark.parametrize("marker, what", [("MERGE_HEAD", "a merge"), ("rebase-merge/", "a rebase"),
+                                          ("rebase-apply/", "a rebase"), ("CHERRY_PICK_HEAD", "a cherry-pick"),
+                                          ("REVERT_HEAD", "a revert")])
+def test_a_rebase_a_cherry_pick_or_a_revert_holds_off_saving_too(tmp_path, marker, what):
+    h = homework(tmp_path)
+    app = server.App(h.student, upstream=str(h.cls))
+    finish_part0(h.student)
+    where = h.student / ".git" / marker.rstrip("/")
+    if marker.endswith("/"):
+        where.mkdir()
+    else:
+        where.write_text(git(h.student, "rev-parse", "HEAD"))
+    app.tick()
+    assert subjects(h.student) == ["Start"]                                 # Part 0 is done, and not committed
+    assert app.updates.busy() == what
+    assert f"Git is in the middle of {what} in this folder" in app.notices["paused"]["text"]
+    if where.is_dir():
+        where.rmdir()
+    else:
+        where.unlink()
+    app.tick()
+    assert "paused" not in app.notices and subjects(h.student)[0] == "Part 0 done"
+
+
+def stash_pop_conflict(h):
+    """A change set aside with git stash, a commit by hand on the same line, then git stash pop."""
+    w = h.student / "WRITEUP.md"
+    w.write_text(FILLED.replace("it guessed", "it guessed, set aside"))
+    git(h.student, "stash", "push", "-q")
+    w.write_text(FILLED.replace("it guessed", "it guessed, by hand"))
+    git(h.student, "commit", "-q", "-am", "By hand")
+    return subprocess.run(["git", "stash", "pop"], cwd=h.student, capture_output=True)
+
+
+def squash_merge_conflict(h):
+    """The class repository's update taken with git merge --squash, over an answer on the same line."""
+    upstream_commit(h, "WRITEUP.md", FILLED.replace("it guessed", "it guessed, from the class"), "Change 0b")
+    git(h.student, "fetch", "-q", "upstream")
+    (h.student / "WRITEUP.md").write_text(FILLED.replace("it guessed", "it guessed, by hand"))
+    git(h.student, "commit", "-q", "-am", "By hand")
+    return subprocess.run(["git", "merge", "--squash", "upstream/main"], cwd=h.student, capture_output=True)
+
+
+@pytest.mark.parametrize("conflict", [stash_pop_conflict, squash_merge_conflict])
+def test_a_conflict_with_no_merge_file_holds_off_saving_too(tmp_path, monkeypatch, conflict):
+    """git stash pop and git merge --squash stop on a conflict without MERGE_HEAD or any other of git's
+    files: only the index says some files are not merged. The page holds off for that too."""
+    monkeypatch.setattr(server, "SETTLE", 0)
+    h = homework(tmp_path)
+    app = server.App(h.student, upstream=str(h.cls))
+    app.updates.setup()
+    finish_part0(h.student)
+    app.commit_finished_parts()
+    assert subjects(h.fork, "main")[0] == "Part 0 done"
+    assert conflict(h).returncode != 0 and "<<<<<<<" in (h.student / "WRITEUP.md").read_text()
+    assert not any((h.student / ".git" / x).exists() for x in updates.BUSY)
+    head = git(h.student, "rev-parse", "HEAD")
+    for _ in range(2):
+        app.tick()
+    assert app.save("Part 0 updated") is False
+    app.push()
+    assert git(h.student, "rev-parse", "HEAD") == head and subjects(h.fork, "main")[0] == "Part 0 done"
+    assert app.updates.busy() == "a merge"
+    assert next(x for x in app.current_notices() if x["kind"] == "paused")["text"].startswith(
+        "Git is in the middle of a merge in this folder, so the page is not saving or pushing your work.")
+    # The student settles the conflict and marks it settled: the page saves and pushes again by itself.
+    (h.student / "WRITEUP.md").write_text(FILLED.replace("it guessed", "it guessed, settled"))
+    git(h.student, "add", "WRITEUP.md")
+    app.tick()
+    assert app.updates.busy() is None and not any(x["kind"] == "paused" for x in app.current_notices())
+    assert subjects(h.student)[0] == subjects(h.fork, "main")[0] == "Part 0 updated"
+    assert "it guessed, settled" in git(h.student, "show", "HEAD:WRITEUP.md")
+    assert "<<<<<<<" not in git(h.student, "show", "HEAD:WRITEUP.md")
+
+
+def test_a_failed_update_does_not_ask_for_a_restart(tmp_path):
+    """A merge that fails is undone with git merge --abort, which puts the page's own files back as they
+    were but with new times. The page compares their bytes before it asks for a restart."""
+    h = homework(tmp_path, {"workbench/note.py": "one\n"})
+    app = server.App(h.student, upstream=str(h.cls))
+    app.updates.setup()
+    (h.seed / "workbench/note.py").write_text("two\n")
+    upstream_commit(h, "WRITEUP.md", WRITEUP.replace("What did it say?\n\n>", "What did it say?\n\n> (write here)"),
+                    "Prompt 0b, and fix the page")
+    app.updates.fetch()
+    (h.student / "WRITEUP.md").write_text(WRITEUP.replace("What did it say?\n\n>", "What did it say?\n\n> Mine."))
+    stamp = app.code_stamp()
+    assert app.update() == {"ok": False}
+    assert (h.student / "workbench/note.py").read_text() == "one\n" and app.code_stamp() != stamp   # new time only
+    kinds = [x["kind"] for x in app.current_notices()]
+    assert "update-failed" in kinds and "restart" not in kinds
+    # A file whose time changes and whose bytes do not is no change; a change to its bytes is one.
+    os.utime(h.student / "workbench/note.py", ns=(1, 1))
+    assert not any(x["kind"] == "restart" for x in app.current_notices())
+    (h.student / "workbench/note.py").write_text("three\n")
+    assert "Restart it: press Ctrl-C" in next(x for x in app.current_notices() if x["kind"] == "restart")["text"]
 
 
 def unpacked(where):

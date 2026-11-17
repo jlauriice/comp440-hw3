@@ -70,11 +70,8 @@ calls with your key; it is not the Claude you are typing to. A *baseline* is a s
 
 **Actions:**
 
-1. Start this step with Claude: paste its prompt from the homework page into the Claude session you
-   have open, or start a new session with its command (type `/exit` first if another session is
-   open in that terminal).
-2. Ask Claude to run the no-tools baseline on the claim, and read the output it pastes.
-3. Type your answer to the question in `WRITEUP.md`, in your editor, under 0b.
+1. Ask Claude to run the no-tools baseline on the claim, and read the output it pastes.
+2. Type your answer to the question in `WRITEUP.md`, in your editor, under 0b.
 
 **Interpreting output:** Claude runs this command:
 
@@ -107,12 +104,9 @@ assessor* is a program that gives a verdict on a claim; here, the model with one
 
 **Actions:**
 
-1. Start this step with Claude: paste its prompt from the homework page into the Claude session you
-   have open, or start a new session with its command (type `/exit` first if another session is
-   open in that terminal).
-2. Ask Claude to run the one-search baseline on the claim, and read the output it pastes.
-3. Click "Open these results" under 0c on the homework page to read the whole page it read.
-4. Type your answers to the two questions in `WRITEUP.md`, in your editor, under 0c.
+1. Ask Claude to run the one-search baseline on the claim, and read the output it pastes.
+2. Click "Open these results" under 0c on the homework page to read the whole page it read.
+3. Type your answers to the two questions in `WRITEUP.md`, in your editor, under 0c.
 
 **Interpreting output:** Claude runs this command:
 
@@ -153,13 +147,10 @@ from Wikipedia that a verdict is based on.
 
 **Actions:**
 
-1. Start this step with Claude: paste its prompt from the homework page into the Claude session you
-   have open, or start a new session with its command (type `/exit` first if another session is
-   open in that terminal).
-2. Ask Claude to run the agent on the claim, and read the trace it pastes, one entry at a time.
-3. Click "Open these results" under 0d and read "The agent's trace", with each lookup's full result.
-4. Find out what Wikidata is: ask Claude, or look at wikidata.org.
-5. Type your answers to the three questions in `WRITEUP.md`, in your editor, under 0d.
+1. Ask Claude to run the agent on the claim, and read the trace it pastes, one entry at a time.
+2. Click "Open these results" under 0d and read "The agent's trace", with each lookup's full result.
+3. Find out what Wikidata is: ask Claude, or look at wikidata.org.
+4. Type your answers to the three questions in `WRITEUP.md`, in your editor, under 0d.
 
 **Interpreting output:** Claude runs this command:
 
@@ -168,15 +159,16 @@ uv run python check.py --method agent --out runs/part0 'The composer of "Persian
 ```
 
 The first line names the loop: `Agent loop: the reference loop (reference_loop.py)`, a loop I wrote (you
-write your own in Part 1). Each numbered entry
+design your own in Part 1). Each numbered entry
 is one tool call (`search`, `read`, `wikidata` or `answer`): what it asked for, then a short version of
 what came back. Then come the verdict, the evidence, the explanation, and the line of lookups and
 time. The entry numbers count answers too, but the Lookups count does not, so it can be smaller
 than the last entry's number; when a question asks for a number, give the entry's. The result is saved as
 `runs/part0/agent-<number>.json`.
 
-An answer that was sent back (rejected) before a later one was accepted is the loop's evidence check: a
-quoted sentence was not in anything the agent had read. Text in a search result does not count as read.
+The reference loop does not check the sentences an answer quotes. In the results viewer, under "Quoted
+evidence", each quote says whether it appears word for word in something the agent read. Text in a
+search result does not count as read.
 
 **Write-up:** Answer these questions in `WRITEUP.md`, under 0d:
 

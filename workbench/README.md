@@ -99,7 +99,10 @@ the page lists their subjects with an **Update** button. The button:
 2. runs `git merge --no-edit upstream/main`;
 3. if the merge fails (a real conflict, or an untracked file in the way), runs `git merge --abort`
    where needed, so every file is as it was, and says: the update could not be applied
-   automatically, nothing in your files was changed, post in #comp440-f26 on Slack.
+   automatically, and nothing in your files was changed; to update by hand, stop this page, run
+   `claude` in the homework folder and say "update my homework"; if that does not work, post in
+   #comp440-f26 on Slack. That session reads `UPDATE.md` from the class repository (CLAUDE.md tells
+   it to) and follows it.
 
 After an update the page reads `steps.toml` and the brief's pages again without a restart (it
 does this whenever they change). If anything under `workbench/`, `viewer/` or `finder/` changed, it

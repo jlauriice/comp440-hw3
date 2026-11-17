@@ -321,13 +321,87 @@ def test_quote_found_and_not_found(repo):
     assert re.search(r'<mark data-q="1"[^>]*>She was born in Paris and\s+lives in \u201cLyon\u201d today\.</mark>', page)
     assert "Found in entry 2 of the trace (read), highlighted below" in words
     assert "Its trace, one entry at a time" in words
-    assert "This quote is not in anything the agent read." in words
+    assert "It appears word for word in what the agent read." in words
+    assert "It does not appear word for word in anything the agent read." in words
     assert 'href="https://en.wikipedia.org/wiki/Alpha_Person"' in page
     assert 'target="_blank"' in page and 'rel="noopener noreferrer"' in page
     assert "#:~:text=" in page
     # It shows what happened and does not judge it.
     for word in ("supports the verdict", "should", "failure", "wrong page", "misread"):
         assert word not in words
+
+
+def test_each_quote_says_whether_it_appears_word_for_word_in_what_the_agent_read(repo):
+    """Nov 14: the loop no longer checks quotes, and 2b's students judge the quoted evidence. Beside
+    each quote the viewer says whether it appears word for word in what the agent read, by the same
+    test as agent.py's check of quotes: in what read and wikidata returned, not in a search's
+    snippet, and not in a lookup the loop refused at the limit."""
+    import agent
+    trace = [{"tool": "search", "input": {"query": "Alpha"}, "result": "1. Alpha Person: a French painter of note"},
+             {"tool": "read", "input": {"title": "Alpha Person"}, "result": PARIS},
+             {"tool": "wikidata", "input": {"entity": "Alpha Person", "property": "place of birth"},
+              "result": "Wikidata: Alpha Person, place of birth: Paris"},
+             {"tool": "read", "input": {"title": "Beta"}, "result": "You have used all 12 steps. Call answer() now."},
+             {"tool": "answer", "input": {"verdict": "supported", "evidence": [], "explanation": "e"},
+              "result": "accepted"}]
+    evidence = ["She was born in Paris",                   # in a read
+                "place of birth: Paris",                   # in what wikidata returned
+                "a French painter of note",                # only in a search's snippet
+                "Sections: Early life, Work Wikidata: Alpha Person",   # from one result into the next
+                "She was born in Paris and lives in Lyon",  # a few words changed
+                "You have used all 12 steps"]              # only in a refused lookup's warning
+    row = R.tidy(result("agent", "h1", "supported", steps=3, trace=trace, evidence=evidence))
+    read = [c["result"] for c in trace if c["tool"] in ("read", "wikidata")][:2]
+    places = R.quote_places(row)
+    assert [p["read"] for p in places] == [True, True, False, True, False, False]
+    assert [p["read"] for p in places] == [not agent.unsupported_quotes([q], read) for q in evidence]
+    assert [p["across"] for p in places] == [False, False, False, True, False, False]
+    rows = full_rows()["agent"]
+    rows[0] = result("agent", "h1", "supported", steps=3, trace=trace, evidence=evidence)
+    write_jsonl(repo / "runs" / "part2" / "agent.jsonl", rows)
+    words = text_of(get(repo, "/results/claim?dir=runs/part2&id=h1")[2])
+    assert words.count("It appears word for word in what the agent read.") == 3
+    assert words.count("It does not appear word for word in anything the agent read.") == 3
+    assert ("Found in entry 1 of the trace (search) (a search result's short snippet, which does not count "
+            "as read), highlighted below.") in words
+    assert ("It runs from the end of one result into the start of the next, so it is not in any one of "
+            "them.") in words
+    # It shows what happened and does not judge it.
+    for word in ("supports the verdict", "should", "failure", "wrong page", "misread", "rejected"):
+        assert word not in words, word
+
+
+def test_a_refusal_and_a_reminder_in_a_trace_are_named(repo):
+    """The parts record a reminder and a refusal in the trace (Nov 14): the trace's first line names
+    them, and neither counts as a lookup."""
+    trace = [{"tool": "(reminder)", "input": {}, "result": "Asked it to call answer()."},
+             {"tool": "(refusal)", "input": {}, "result": "The model declined to check this claim."}]
+    rows = full_rows()["agent"]
+    rows[0] = result("agent", "h1", None, steps=0, trace=trace,
+                     explanation="The model declined to check this claim.")
+    write_jsonl(repo / "runs" / "part2" / "agent.jsonl", rows)
+    words = text_of(get(repo, "/results/claim?dir=runs/part2&id=h1")[2])
+    assert "This trace has 2 entries: 0 lookups" in words
+    assert "1 reminder from the loop to call answer() and the model's refusal to check the claim." in words
+    assert "The model declined to check this claim." in words
+
+
+def test_the_parts_stop_after_too_many_calls_to_the_model_is_named(repo):
+    """Nov 14: the parts stop a loop that has called the model 3 * MAX_STEPS + 10 times for one claim
+    (a loop that sends answers back with no count of its own). The claim's page gives the sentence,
+    as the explanation and as the trace's last entry, and the stop is not counted as a lookup."""
+    why = agent.TOO_MANY_ASKS.format(n=46)
+    sent_back = {"tool": "answer",
+                 "input": {"verdict": "supported", "evidence": ["Made up."], "explanation": "x"},
+                 "result": agent.REJECTED + "These quotes are not in anything you read: Made up."}
+    trace = [sent_back] * 46 + [{"tool": "(stopped)", "input": {}, "result": why}]
+    rows = full_rows()["agent"]
+    rows[0] = result("agent", "h1", None, steps=0, trace=trace, explanation=why)
+    write_jsonl(repo / "runs" / "part2" / "agent.jsonl", rows)
+    words = text_of(get(repo, "/results/claim?dir=runs/part2&id=h1")[2])
+    assert "This trace has 47 entries: 0 lookups" in words
+    assert "46 answers and the stop after the agent had asked the model too many times." in words
+    assert words.count("The agent asked the model 46 times for this claim and was stopped.") == 2
 
 
 def test_long_results_are_folded_but_reachable(repo):
@@ -883,6 +957,22 @@ def test_the_limit_of_lookups_comes_from_the_run(repo, monkeypatch):
     write_jsonl(repo / "runs" / "c" / "agent.jsonl", [result("agent", "h1", "supported", steps=10)])
     assert "used all 10 lookups" in text_of(get(repo, "/results/run?dir=runs/c")[2])
     assert "A was made with a limit" not in text_of(get(repo, "/results/compare?a=runs/b&b=runs/part3/after-eval")[2])
+
+
+def test_the_limit_comes_from_each_result_when_evaluate_saved_it(repo, monkeypatch):
+    """The plainest loop (Nov 14) does not warn the model, and one reply can take its count past the
+    limit, so the counts cannot show the limit. evaluate.py saves it with each of the agent's results."""
+    monkeypatch.setattr(R.RULES, "max_steps", lambda: 8)       # agent.py's limit changed since
+    rows = [result("agent", "h1", None, steps=14, explanation=agent.RAN_OUT),   # one reply crossed 12
+            result("agent", "h2", "refuted", steps=12),
+            result("agent", "h3", "supported", steps=5)]
+    for row in rows:
+        row["max_steps"] = 12
+    write_jsonl(repo / "runs" / "d" / "agent.jsonl", rows)
+    words = text_of(get(repo, "/results/run?dir=runs/d")[2])
+    assert "The agent used all 12 lookups on 2 claims." in words
+    assert shown_ids(get(repo, "/results/run?dir=runs/d&used_all=1")[2]) == ["h1", "h2"]
+    assert R.run_limit([R.tidy(r) for r in rows]) == (12, [12])
 
 
 def test_the_3b_comparison_appears_only_if_the_homework_has_its_run(repo):

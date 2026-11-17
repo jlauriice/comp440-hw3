@@ -43,24 +43,25 @@ EXPECTED = {
     "0b": (0, "0b. Ask the model to assess a claim without tools", ["runs/part0/no-tools-*.json"], CHECK, 10),
     "0c": (0, "0c. Give it one search", ["runs/part0/one-search-*.json"], CHECK, 15),
     "0d": (0, "0d. Run the agent and read its trace", ["runs/part0/agent-*.json"], CHECK, 15),
-    "1a": (1, "1a. Write the loop", ["runs/part1/loop-check.txt"], LOOP_CHECK + ["Edit(my_loop.py)"], 70),
-    "1b": (1, "1b. Be the agent", ["runs/part1/lookups.jsonl"], LOOKUP, 25),
+    "1a": (1, "1a. Design the loop", ["runs/part1/loop-check.txt"], LOOP_CHECK + ["Edit(my_loop.py)"], 45),
+    "1b": (1, "1b. Be the agent", ["runs/part1/lookups.jsonl"], LOOKUP, 35),
     "1c": (1, "1c. Watch the agent work", ["runs/part1/before/report.txt"], EVALUATE + CHECK, 25),
     "1d": (1, "1d. Write the agent's instructions", ["runs/part1/after/report.txt"], EVALUATE + CHECK, 45),
     "1e": (1, "1e. Start the full run, and predict", ["runs/part2/no-tools.jsonl"], EVALUATE, 20),
     "2a": (2, "2a. Compare accuracy", ["runs/part2/report.txt"], EVALUATE, 25),
     "2b": (2, "2b. Check the evidence yourself", [], LOOKUP, 35),
-    "3a": (3, "3a. Sort the failures", [], [], 32),
+    "3a": (3, "3a. Sort the failures", [], [], 45),
     "3b": (3, "3b. Make one change", ["runs/part3/after/report.txt"],
-           EVALUATE + CHECK + ["Bash(uv run python check_loop.py)", "Edit(instructions.md)"], 28),
-    "3c": (3, "3c. Write it up", [], [], 20),
+           EVALUATE + CHECK + ["Bash(uv run python check_loop.py)", "Edit(instructions.md)", "Edit(my_loop.py)"], 45),
+    "3c": (3, "3c. Write it up", [], [], 30),
 }
 # Minutes per part (the instructor's "split the difference", morning of Nov 11). Parts 0 to 2,
 # the required work, made about 5 hours and 45 minutes; the old step 0b, picking topics and
 # claims, took 40 of them. Without it (the instructor, afternoon of Nov 11: "drop 0b") they make
 # 305 minutes, about 5 hours.
 # Step 3b went from 18 to 28 minutes for its first task, token counting (Nov 11).
-PART_MINUTES = {0: 60, 1: 185, 2: 60, 3: 80}
+# After the read of steps 1b to 3c (Nov 13): 1b 25 -> 35, 3a 32 -> 45, 3b 28 -> 45, 3c 20 -> 30.
+PART_MINUTES = {0: 60, 1: 170, 2: 60, 3: 120}
 
 # Each step's summary, word for word from the instructor's outline (Nov 11).
 SUMMARIES = {
@@ -73,19 +74,21 @@ SUMMARIES = {
           "improves your claim assessor.",
     "0d": "In this step you find out how the agent gets from the claim to a verdict when it chooses its "
           "own lookups.",
-    "1a": "In this step you write the agent loop yourself. The loop asks the model for lookups, runs the "
-          "lookups it chooses, sends back what they return, and stops.",
+    "1a": "In this step you design the agent's loop. You write an outline of its logic in plain words, and "
+          "Claude translates your outline into Python. The loop asks the model for lookups, runs the lookups it "
+          "chooses, sends back what they return, and stops.",
     "1b": "In this step you check one claim yourself, using only the agent's four tools.",
     "1c": "In this step you find out whether the agent matches the dataset's label on your 12 "
-          "development claims.",
+          "development claims, and whether it got there for a good reason.",
     "1d": "In this step you write the agent's instructions, and see how its traces change.",
-    "1e": "In this step you start the run on your 100 evaluation claims.",
+    "1e": "In this step you start the run on your 100 evaluation claims, and predict its results while it runs.",
     "2a": "In this step you find out how often each of the three versions matched the dataset's label "
           "on your 100 evaluation claims. You compare those numbers with your predictions from 1e.",
     "2b": "In this step you find out whether the agent's quoted evidence really supports its verdicts.",
     "3a": "In this step you find out why the agent fails on your evaluation claims.",
     "3b": "In this step you make one change aimed at your most common failure. You find out whether it "
-          "fixes that failure on your evaluation claims.",
+          "fixes that failure on your evaluation claims. First, you make your loop count tokens, so that you "
+          "see what the run costs.",
     "3c": "In this step you say what you learned, in your own words.",
 }
 
@@ -104,33 +107,36 @@ TASKS = {
     "0c": ["Ask Claude to run the one-search baseline on the claim. Its answer is saved in runs/part0/."],
     "0d": ["Ask Claude to run the agent on the claim. Its run is saved in runs/part0/.",
            "In the results viewer, read the trace, one entry at a time."],
-    "1a": ["In your editor or with Claude, read agent.py: the four tools, the evidence check and finish().",
-           "Write your loop in my_loop.py, in your editor or by describing it to Claude, until it passes "
-           "every rule of the check. The structure and the ideas are yours; Claude can write the code you "
-           "describe. (Remember, Claude can help you!)"],
-    "1b": ["By hand, make your first lookup: ask Claude to run it, with the tool and the words you choose. "
-           "It is saved in "
-           "runs/part1/lookups.jsonl.",
+    "1a": ["In your editor, write your outline of the loop in the block under 1a in WRITEUP.md.",
+           "Ask Claude to translate your outline into my_loop.py and to run the check. Change your outline and "
+           "ask again, until every rule passes. The structure and the ideas are yours; Claude coaches you and "
+           "writes the Python. (Remember, Claude can help you!)"],
+    "1b": ["Make your first lookup: choose the tool and what to ask it (for a search, the search query), "
+           "and ask Claude to run it. It is saved in runs/part1/lookups.jsonl.",
            "Decide on a verdict on the claim. If you've used all 12 lookups without answering it, your "
            "verdict is *doesn't say*."],
     "1c": ["Ask Claude to run the agent on your 12 development claims.",
            "In the results viewer, read three traces closely. Pick one claim each that needs 2, 3 and 4 "
-           "Wikipedia articles, where your development claims have one."],
+           "Wikipedia articles."],
     "1d": ["In your editor, write your own instructions in instructions.md. They must say how to break a "
            "claim into pieces, when to use wikidata, when to stop, and when to answer \"doesn't say\".",
            "Ask Claude to run the agent on your 12 development claims again.",
            "In the results viewer, compare the two runs."],
     "1e": ["In a terminal tab of your own, start the full run."],
-    "2a": ["In the terminal tab where you started it, check that the full run has finished.",
+    "2a": ["Check that the full run has finished: the homework page ticks this when it has. If it has not, "
+           "look at the run's terminal tab. If the run is still going, wait there for its two tables; if it "
+           "has stopped, start it again in a terminal tab of your own (see Troubleshooting).",
            "In the results viewer, open the run."],
     "2b": ["In the results viewer, check the quoted evidence for the first five claims where the agent "
            "answered \"supported\" or \"refuted\"."],
-    "3a": ["In your editor, label each of the eight failures in your table, with the entry of the trace "
+    "3a": ["In the results viewer, read the trace of each of the first eight failures (Actions says how to "
+           "find them), and in your editor label each one in the table under 3a, with the entry of the trace "
            "that shows it, and say whether the dataset's label is right.",
            "Ask Claude to label the same claims. It gives its labels without seeing yours.",
            "Put Claude's labels in the last column of your table: ask Claude to, or type them in your editor."],
-    "3b": ["Make your loop count tokens, in your editor or by describing it to Claude, then ask Claude to "
-           "run the check until its last line says ok.",
+    "3b": ["Make your loop count tokens: add it to your outline and ask Claude to translate it again (or add "
+           "it to Python you wrote yourself), then ask Claude to run the check until the line \"Count the "
+           "tokens (extra credit)\" says ok.",
            "Make one change, in your editor or by asking Claude.",
            "In a terminal tab of your own, start the agent's run on your evaluation claims, and let it finish.",
            "In the results viewer, compare the two runs."],
@@ -139,7 +145,7 @@ TASKS = {
 
 # Tasks only the student can see done (`tick = false`): the page shows them with no tick, the way it
 # shows the /exit task, and no brief ticks them or asks the student to report them. Step: task numbers.
-NO_TICK = {"0d": [2], "1a": [1], "1b": [2], "1c": [2], "1d": [3], "2a": [2], "2b": [1], "3b": [4]}
+NO_TICK = {"0d": [2], "1b": [2], "1c": [2], "1d": [3], "2a": [2], "2b": [1], "3b": [4]}
 
 # Where a task happens, in the words the tasks use. The verdict in 1b is decided in the student's
 # head, so it names no place; its answer is typed under the questions, which the page introduces.
@@ -162,8 +168,7 @@ GOALS = [
     "Understand what makes a program an *agent*. You will study a language model that picks the next "
     "Wikipedia search query, reads the page that comes back, and decides when to stop.",
     "Gain hands-on experience with the loop around the model by writing it yourself: its tools, its "
-    "instructions, its limit of 12 lookups, and the check that every sentence it quotes really appears "
-    "in what it read.",
+    "instructions, and its limit of 12 lookups.",
     "Compare the agent with two simpler methods on your claims, and measure how effective each one is.",
     "Check the agent's evidence yourself, and decide whether accuracy alone is a fair measure of it.",
 ]
@@ -274,7 +279,9 @@ def test_fourteen_steps_in_order(a):
 def test_minutes_per_part(a):
     per = {n: sum(s.minutes for s in a.steps if s.part == n) for n in PARTS}
     assert per == PART_MINUTES
-    assert sum(per[n] for n in (0, 1, 2)) == 305, "the required work is about 5 hours"
+    # 1a went from 70 to 45 minutes on Nov 14, when it came to ask for the plainest loop.
+    assert sum(per[n] for n in (0, 1, 2)) == 290, "the required work is about 5 hours"
+    assert a.step("1a").minutes == 45
 
 
 # The instructor, Nov 11, on counting tokens: "have it gone entirely. for the extra credit we can
@@ -299,27 +306,79 @@ def test_parts_0_to_2_say_nothing_about_tokens(a):
         flat(a.step("1a").brief)
 
 
+def test_3b_offers_a_change_to_the_loop(a):
+    """Nov 14: the plainest loop leaves out what the six rules asked for. 3b's Hint offers two of them
+    as changes (the third, the reminder, the parts already make), and the brief lets Claude translate
+    such a change, by 1a's rules, without proposing it."""
+    page = flat((REPO / "instructions" / "part3.md").read_text(encoding="utf-8"))
+    assert ("It can also be to your loop, through your outline: for example, send back an answer whose quotes "
+            "are not word for word in what the agent read (`talk.problem_with` in `loop_parts.py` checks them), "
+            "or warn the model before it runs out of lookups.") in page
+    assert "Apart from the token count, leave your outline and your loop" not in page
+    brief = flat(a.step("3b").brief)
+    for must in ("The page also offers a change to the loop, through the outline",
+                 "Such a change is translated by 1a's rules",
+                 "talk.stop(REJECTED_TOO_OFTEN.format(n=rejected), steps, tokens)",
+                 "talk.give(call, OUT_OF_STEPS.format(n=max_steps))",
+                 "never propose a change",
+                 # Nov 14, the 3b live check: the tutor said such a loop "goes on until the limit of 12".
+                 "An answer sent back is not a lookup, so the limit of 12 does not end a loop that sends "
+                 "answers back: when the outline sends answers back with no stop of its own, say that such "
+                 "a loop needs one (the count of answers sent back, with a number the student chooses), and "
+                 "that as a last resort the parts stop any loop after about 46 asks to the model for one "
+                 "claim."):     # 46 is 3 * MAX_STEPS + 10, pinned in test_agent.py
+        assert must in brief, must
+    assert "If they propose a change to the loop as their one change" not in brief
+
+
 def test_3b_starts_with_token_counting(a):
     s = a.step("3b")
     brief = flat(s.brief)
     for must in ("The first task is to make the loop count tokens",
-                 "Explain .usage and finish() as often as they ask",
-                 "the code follows your rule for the code the student makes",
+                 "each reply from the model reports how many it used, input and output. Explain both as "
+                 "often as they ask.",
+                 "Counting tokens is a change to the student's outline like any other",
+                 "The count is a memory, so the outline must say that the loop remembers it, where it is set "
+                 "and changed, and that every stop returns it, with the answer or with no verdict.",
+                 "It is not the last line the check prints.",
+                 "in a session continued from another step with the page's prompt, edits to instructions.md and "
+                 "my_loop.py ask first too.",
+                 "translate the outline again by 1a's rules",
+                 "no logic, memory or order of your own",
+                 "reply.usage.input_tokens and reply.usage.output_tokens",
+                 "tokens goes last in every talk.accept(call, steps, tokens) and talk.stop(why, steps, tokens)",
+                 "A student who wrote their loop's Python by hand adds the count to their Python instead",
                  '"Count the tokens (extra credit)"', "Tick checkpoint 1 once that line says ok.",
                  "Tick checkpoint 2 once you have seen the change in `git diff`."):
         assert must in brief, must
     page = flat((REPO / "instructions" / "part3.md").read_text(encoding="utf-8"))
     for must in ("**Words in this step:** A *token* is the unit the Claude API counts text in and charges by",
-                 "add `tokens = {\"input\": 0, \"output\": 0}` to the set-up lines.",
-                 "Pass `tokens` to every `finish(...)` as its last argument.",
-                 'Its last line, "Count the tokens (extra credit)", must say `ok`',
-                 "It should take about an hour and 20 minutes.",
+                 "add it to your outline in `WRITEUP.md`, under 1a: the loop remembers how many tokens the "
+                 "model's replies have used, input and output (none yet); each time a reply comes back, it adds "
+                 "that reply's tokens; and every time the loop stops, it returns the count along with the "
+                 "answer, or with no verdict.",
+                 "- You wrote your loop's Python yourself: keep the count as",
+                 "and pass `tokens` last in every `talk.accept(...)` and `talk.stop(...)`",
+                 "Your loop must still pass the check after any change",
+                 'The line "Count the tokens (extra credit)", printed after the five rules, must say `ok`',
+                 "It should take about 2 hours.",
                  'The agent\'s cost per claim is under "Cost" for `runs/part3/after` in the results viewer, and '
                  'the one-search baseline\'s is under "Cost" for `runs/part2`.'):
         assert must in page, must
     # The 3c question is word for word as it was.
     assert ("What does the agent's loop add over one search, what does it cost, and when would you not use an "
             "agent for a job like this? Use your numbers from Part 2 and Part 3.") in page
+
+
+def test_3b_points_an_outline_student_to_the_outline(a):
+    """The flow simulations of Nov 14, run C: the tutor told a student whose loop came from their
+    outline "If you'd rather type it yourself, the Troubleshooting part of the page lists the same
+    changes", though that line is for a student who wrote the loop's Python by hand."""
+    brief = flat(a.step("3b").brief)
+    assert ("Point a student whose loop came from their outline to the outline, never to the page's "
+            "Troubleshooting line for Python written by hand.") in brief
+    page = flat((REPO / "instructions" / "part3.md").read_text(encoding="utf-8"))
+    assert "- You wrote your loop's Python yourself:" in page          # the line the brief means
 
 
 def test_the_old_cost_step_and_the_id_2c_are_gone():
@@ -381,6 +440,18 @@ def test_the_tasks_are_the_outlines(a):
     assert tasks == TASKS
 
 
+def test_2a_first_task_waits_for_a_run_that_is_still_going(a):
+    """Found while preparing the flow fixes of Nov 14: 2a's first task said "If it has not, start it
+    again", which also covers a run that is still going, and a second copy would write into the same
+    folder. The task now says to look at the run's terminal tab first, and Actions 1 on the page says
+    the same words."""
+    task = stepmod.checkpoints(a.step("2a"))[0].task
+    assert task == TASKS["2a"][0]
+    assert "If the run is still going, wait there for its two tables; if it has stopped, start it again" in task
+    page = flat((REPO / "instructions" / "part2.md").read_text(encoding="utf-8"))
+    assert f"1. {task}" in page
+
+
 def test_tasks_only_the_student_can_see_done_have_no_tick(a):
     """Reading a trace, comparing two runs, deciding on a verdict: nobody but the student sees these
     happen, so the page shows them with no tick, the brief never ticks them, and the step never
@@ -395,6 +466,16 @@ def test_tasks_only_the_student_can_see_done_have_no_tick(a):
         assert "when they say they have" not in flat(s.brief) or s.id == "3a", s.id
 
 
+def test_1d_ticks_on_a_changed_file_and_judges_the_four_points_only_when_asked(a):
+    """The flow simulations of Nov 14, runs A and C: both tutors volunteered "it covers each of the
+    four points the task names, so I ticked that task", a judgment the brief allowed only when asked."""
+    brief = flat(a.step("1d").brief)
+    assert ("check that the file has changed with `git diff --stat -- instructions.md`, and tick checkpoint 1. "
+            "The tick depends only on the file having changed, not on what it says: when you tick it, say only "
+            "that the file has changed. Say whether it speaks to each of the four points the task names only "
+            "when they ask.") in brief
+
+
 def test_every_task_says_where_it_happens(a):
     bad = []
     for s in a.steps:
@@ -405,8 +486,9 @@ def test_every_task_says_where_it_happens(a):
 
 
 def test_the_page_says_where_answers_go_once_per_step_and_once_at_the_top(a):
-    assert a.answers_task == ("Type your answers to these questions in WRITEUP.md, in your editor. "
-                              "Claude does not write your answers.")
+    # In 1b, 2a and 3a a question asks Claude to paste something into WRITEUP.md (the cold read, Nov 13).
+    assert a.answers_task == ("Type your answers in WRITEUP.md, in your editor. Claude writes there only where a "
+                              "question asks it to paste something.")
     assert a.top_note == ("You talk with Claude to run programs and to ask for explanations. You type your "
                           "answers in `WRITEUP.md`, in your editor.")
     assert "when every task above is ticked" not in a.stop_task, "a task with no tick never gets one"
@@ -459,6 +541,18 @@ def test_a_session_serves_one_step_at_a_time_and_can_go_on_to_the_next(a):
     assert "in its own session" not in flat(a.step("0a").brief)
 
 
+def test_the_hand_off_to_the_next_step_names_both_ways_to_start_it(a):
+    """The flow simulations of Nov 14: at the end of a step every tutor said "paste its prompt from the
+    homework page into this chat", though the page offers two ways to start a step (the prompt, pasted
+    into the open session, or a command for a new session)."""
+    tutor = flat(a.tutor)
+    assert ("When this step is complete, say in one line which step is next and how to start it, for "
+            "example: \"The next step is 1c. Start it from the homework page: paste its prompt into this chat, "
+            "or use its command for a new session.\"") in tutor
+    assert ("Then say in one line that 0b is next, and that they start it from the homework page: its "
+            "prompt, pasted into this chat, or its command for a new session.") in flat(a.step("0a").brief)
+
+
 def test_0d_explains_wikidata_but_the_why_is_the_students(a):
     brief = flat(a.step("0d").brief)
     for must in ("step's three questions in WRITEUP.md",
@@ -468,6 +562,18 @@ def test_0d_explains_wikidata_but_the_why_is_the_students(a):
                  "answer, and do not list reasons; say that it goes in WRITEUP.md, under 0d, in their editor."):
         assert must in brief, must
     assert "two questions" not in brief
+
+
+def test_1e_says_stop_for_the_day_only_once_the_run_has_ended(a):
+    """The flow simulations of Nov 14, runs A and B: both tutors told the student to stop for the day
+    while the full run was still going. A student who closes the laptop then stops the run. The page's
+    Hint says it only "once the run has ended"; the brief now says the same."""
+    brief = flat(a.step("1e").brief)
+    assert ("Once the run has ended, this is a good place to stop for the day. Until then the laptop must "
+            "stay awake and the run's terminal tab open; the run does not need this session.") in brief
+    assert "This is a good place to stop for the day." not in brief
+    hint = flat((REPO / "instructions" / "part1.md").read_text(encoding="utf-8"))
+    assert "once the run has ended, this is a good place to stop for the day." in hint
 
 
 def test_run_notes_are_the_outlines():
@@ -483,7 +589,12 @@ def test_checkpoints_cover_the_step(a, step_id):
     own), and a checkpoint ticks only on the step's own files and answers."""
     s = a.step(step_id)
     cps = stepmod.checkpoints(s)
-    assert sorted({x for c in cps for x in c.slots}) == sorted(s.slots)
+    # By the answers they name in the write-up, not by label: 1a names its outline and its two
+    # questions by question, under its step-wide "1a.*". Each answer is named once.
+    slots = stepmod.read_slots((REPO / "WRITEUP.md").read_text(encoding="utf-8"))
+    named = [k for c in cps for k in stepmod.step_keys(stepmod.Step(id=s.id, part=s.part, title="", slots=c.slots), slots)]
+    assert sorted(named) == sorted(stepmod.step_keys(s, slots)), step_id
+    assert len(named) == len(set(named)), f"{step_id}: an answer is named by two checkpoints"
     for c in cps:
         assert set(c.files) <= set(s.files), f"{step_id}: '{c.text}' ticks on a file the step doesn't need"
 
@@ -526,6 +637,18 @@ def test_brief_commands_run_without_asking(a, step_id):
             assert "Never run that" in s.brief, f"{step_id}: the brief must say Claude never runs {c}"
 
 
+def test_2a_looks_before_saying_the_full_run_has_finished(a):
+    """The flow simulations of Nov 14, runs B and C: both tutors said the full run was finished without
+    running the `ls runs/part2` the brief asked for; one went by what git showed when the session
+    started. The brief now says when to look, and what alone shows the run has finished."""
+    brief = flat(a.step("2a").brief)
+    assert ("Before your first reply, check with `ls runs/part2`. Say that the run has finished only when "
+            "that shows report.txt, never from what git showed when this session started; the page ticks "
+            "the first task once report.txt exists.") in brief
+    assert "should be finished: runs/part2/report.txt exists" not in brief
+    assert a.step("2a").files == ["runs/part2/report.txt"]
+
+
 def test_claim_steps_give_the_claim_word_for_word(a):
     assert a.sample_claim == SAMPLE_CLAIM
     for s in a.steps:
@@ -561,6 +684,19 @@ def test_no_brief_and_no_tutor_rule_asks_for_a_prediction(a):
             assert "expect" not in c.text.lower() and "expect" not in c.task.lower(), (s.id, c.text)
 
 
+def test_1d_says_what_happens_to_saved_results_when_instructions_change_after_the_run(a):
+    """The flow simulations of Nov 14, run B: after the run, the tutor said "Don't change
+    instructions.md now, because a saved result is never run again", a reason that does not fit the
+    advice. A change after the run is fine; the saved results just do not follow it without --fresh."""
+    brief = flat(a.step("1d").brief)
+    assert ("They must not change instructions.md while a run is going, because the agent reads it again for "
+            "every claim. Once the run has ended they may change it, but the saved results do not update by "
+            "themselves: to see the change, they ask you to run again with `--fresh`, the command above.") in brief
+    assert "uv run python evaluate.py data/dev.jsonl --methods agent --out runs/part1/after --fresh" in brief
+    program = (REPO / "evaluate.py").read_text(encoding="utf-8")      # the option, and what it does
+    assert 'help="forget this folder\'s saved results for these methods and run them again"' in program
+
+
 def test_no_brief_reruns_the_long_runs_with_fresh(a):
     """--fresh is for 1d's and 3b's runs. A line that runs runs/part2 with --fresh would cost the
     full run again."""
@@ -568,6 +704,25 @@ def test_no_brief_reruns_the_long_runs_with_fresh(a):
         for c in commands(s.brief):
             if "--fresh" in c:
                 assert "runs/part2" not in c and "after-eval" not in c, f"{s.id}: {c}"
+
+
+def test_2a_finds_out_whether_the_run_is_still_going_before_it_is_started_again(a):
+    """Found while preparing the flow fixes of Nov 14: when report.txt was missing, the brief had the
+    student start the same command again, which starts a second copy of a run that is still going,
+    writing into the same folder. The tutor now has the student look at the run's terminal tab first.
+    That a run started again carries on from where it stopped is tested in test_evaluate.py."""
+    brief = flat(a.step("2a").brief)
+    assert ("The student starts the same command again in their own terminal tab only once it has stopped: "
+            "a second copy started while the first is still going would write into the same folder.") in brief
+    assert ("To find out which it is before anything is started again, ask the student what the run's "
+            "terminal tab shows. If it is still printing progress, such as \"agent: 40 of 100 done, 6 min so "
+            "far\", with no prompt after the last line, the run is still going: they wait in that tab for its "
+            "two tables. If that tab is closed, or the run in it has stopped, the same command carries on from "
+            "where it stopped, because the saved results are kept: it checks only the claims still to do.") in brief
+    assert "terminal tab: it keeps every claim it already finished" not in brief
+    program = (REPO / "evaluate.py").read_text(encoding="utf-8")  # the progress line the brief quotes
+    assert 'print(f"{method}: {n} of {len(todo)} done, "' in program
+    assert 'f"{(time.time() - start) / 60:.0f} min so far"' in program
 
 
 def test_long_runs_are_shown_as_run_yourself():
@@ -583,6 +738,17 @@ def test_long_runs_are_shown_as_run_yourself():
             assert run.get("note", "").startswith("About "), step_id
         else:
             assert "run_yourself" not in s, step_id
+
+
+def test_1e_looks_before_its_first_reply(a):
+    """The flow simulations of Nov 14, run A: the student started the full run before starting 1e
+    with Claude, and the tutor's first reply told them to start it. A second run would write into
+    runs/part2 alongside the first. The brief now has the tutor look first."""
+    brief = flat(a.step("1e").brief)
+    assert ("Before your first reply, check with `ls runs/part2`. If no-tools.jsonl is there, the run has "
+            "started: say so, and name the next task, the predictions under 1e in WRITEUP.md, in their "
+            "editor.") in brief
+    assert a.step("1e").files == ["runs/part2/no-tools.jsonl"]     # the file that ticks "started"
 
 
 def test_only_1a_and_1e_hide_their_results():
@@ -687,8 +853,11 @@ def test_the_tutor_text_is_shorter_than_before(a):
     """It was 3,965 words on Nov 10. The rules now say why they exist, and fewer of them are left.
     The limit was 3,000 until the rule for going on to another step in the same session, and the
     sentence that the tool's result is not shown to the student (both Nov 11). It was 3,100 until
-    the rule that Claude may write the code a student describes (Nov 11), which added 64 words."""
-    assert len(a.tutor.split()) < 3150
+    the rule that Claude may write the code a student describes (Nov 11), which added 64 words. It
+    was 3,150 until step 1a became an outline that Claude translates (Nov 13), which added 37 words.
+    It was 3,200 until the hand-off to the next step named both ways to start it, with an example
+    (Nov 14), which added 32 words."""
+    assert len(a.tutor.split()) < 3250
 
 
 def test_the_api_key_rules_are_kept(a):
@@ -725,7 +894,9 @@ CODE = [re.compile(x) for x in (
 
 def test_no_brief_and_no_tutor_rule_shows_loop_code(a):
     found = []
-    for where, text in [("tutor", a.tutor)] + [(s.id, s.brief) for s in a.steps]:
+    # 1a's brief holds the translator's reference: Claude writes the Python for the student's
+    # outline, so it needs the exact shapes.
+    for where, text in [("tutor", a.tutor)] + [(s.id, s.brief) for s in a.steps if s.id != "1a"]:
         for n, line in enumerate(text.splitlines(), 1):
             for pattern in CODE:
                 if pattern.search(line):
@@ -744,61 +915,85 @@ def test_code_finder_sees_loop_code():
         assert not any(p.search(line) for p in CODE), line
 
 
-def test_only_1a_lets_claude_edit_the_students_loop():
+def test_only_1a_and_3b_let_claude_edit_the_students_loop():
     """The instructor, Nov 11: "i want claude to allow the student to have it generate code, but the
-    structure and ideas should be from the student." Claude may write the loop the student describes
-    in 1a without asking first; no other step's allow list, and not the global one, names my_loop.py,
-    and the files with a finished loop stay closed."""
+    structure and ideas should be from the student." Claude may write the translation of the
+    student's outline without asking first: in 1a, and in 3b for the token count. No other step's
+    allow list, and not the global one, names my_loop.py, and the files with a finished loop stay
+    closed."""
     data = raw()
     named = {s["id"]: [r for r in s.get("allow", []) if "my_loop.py" in r and not r.startswith("Bash(")]
              for s in data["step"]}
     assert named.pop("1a") == ["Edit(my_loop.py)"]
+    assert named.pop("3b") == ["Edit(my_loop.py)"]     # the token count, translated from the outline
     assert not any(named.values()), named
     assert not [r for r in data.get("allow", []) if "my_loop.py" in r]
     assert {"reference_loop.py", "tests/test_loop_check.py"} <= set(data["never_read"])
 
 
-def test_1a_writes_the_code_the_student_describes_and_no_more(a):
-    """Goal 2: the loop's structure and ideas are the student's, and they know each part. Claude
-    explains, reads their code and pastes the check; it writes code once the student has said what
-    it should do, step by step, writes that and no more, asks about gaps, and never looks for a
-    finished loop. A request with no idea in it gets one question."""
+def test_1a_translates_the_outline_and_adds_nothing(a):
+    """The new 1a (Nov 13), goal 2: the outline is the student's design. Claude translates it line by
+    line, in the student's order, and adds no logic, no memory and no order of its own; the parts
+    record the trace. Claude never looks for a finished loop."""
     brief = flat(a.step("1a").brief)
-    for must in ("the loop's structure and ideas are theirs, and that they know what each part of it does",
-                 "When the check fails, paste its output, say what the NOT YET sentence means in plain words",
-                 "The change to make is theirs to describe; write it once they have.",
-                 "Write code once they have described what it should do: which rule or part, and how it works "
-                 "step by step, in their own words",
-                 "Write what they described and no more, in my_loop.py or in the chat, as they ask.",
-                 "do not fill the gap with your own design, add a rule they did not describe, or quietly fix "
-                 "their idea.",
-                 "If their idea will not pass a rule, write it as described and let the check say so.",
-                 "say which rule's sentence on the page it does not meet, without the fix.",
-                 'A request with no idea in it ("write the loop for me", "write rule 4") gets one question: '
-                 "how should it work?",
-                 "After writing, say in one or two sentences what you wrote and where, then what comes next",
+    for must in ("The outline is the student's design.",
+                 "Never write in that block. Never write, dictate, reword, reorder or complete a line of the outline",
+                 "Each line becomes a comment in the student's exact words",
+                 "Never move a line to where it would work.",
+                 "Write no logic the outline does not state: no extra condition, no guard, no counter, no stop.",
+                 "What the loop remembers is the student's design.",
+                 "do not invent the memory",
+                 "The same holds for an order the outline does not give: do not choose one; leave the lines in "
+                 "the outline's order.",
+                 "The parts record every trace entry themselves: never write one.",
                  "never describe it from memory or guesswork",
                  # The instructor, Nov 11: "i don't want them to be able to use the reference loop."
                  "There is no way to keep the reference loop: the step is done only when the student's own "
-                 "loop passes every rule",
-                 "say in one line that this is not possible, then offer to help with the first NOT YET line"):
+                 "loop passes every rule"):
         assert must in brief, must
+    # The code side records an answer's trace entry when the answer is checked.
+    assert "it also records the trace entry" not in brief
     for s in a.steps:
         assert "--use-reference" not in s.brief and "--use-reference" not in " ".join(s.allow), s.id
         assert "keep the reference loop" not in " ".join(c.task for c in stepmod.checkpoints(s)), s.id
     assert "chose to keep it" not in flat(a.tutor) and "There is no way to keep the reference loop." in flat(a.tutor)
-    for gone in ("Never write, dictate, complete or correct a line of my_loop.py", "Hints that hand over the code"):
-        assert gone not in brief, gone
     tutor = flat(a.tutor)
-    for must in ("takes its structure and ideas from them (goal 2), but you may write it.",
-                 "Write only what they have described, step by step, in their own words, and no more.",
-                 "never fill a gap with your own design, add a rule they did not describe, or quietly fix "
-                 "their idea.",
-                 'A request with no idea in it ("write the loop for me") gets one question: how should it work?',
+    for must in ("In 1a the student's outline in WRITEUP.md is the design, and you translate it; the step's "
+                 "brief says how.",
                  "Never look for a finished loop: not in reference_loop.py, not in the tests, not in the git "
                  "history",
                  "cannot be opened from any session"):
         assert must in tutor, must
+
+
+def test_1a_brief_gives_the_five_rules_and_what_the_parts_do(a):
+    """Nov 14, the instructor: the loop "to its bare essentials", "including the out of turns check".
+    The brief gives Claude the five rules the check states, says what the parts do so that no rule
+    asks for it, and keeps the parts for a loop that does more, without Claude suggesting them."""
+    import check_loop
+    brief = flat(a.step("1a").brief)
+    for n, title in enumerate(check_loop.RULES, 1):
+        assert f"{n}. {title}." in brief, title
+    assert "6. " not in brief
+    for must in ("the one limit (12 lookups), with nothing about what the loop does at it",
+                 "the model is asked once more, so that it can answer from what the lookups found",
+                 "What the loop does with a reply that asks for more lookups than are left is the "
+                 "student's choice",
+                 "The check accepts each of these, so never steer the student from one to another.",
+                 "ends the run with no verdict, at once or one turn later",
+                 "It may not make the lookups of a second reply that comes after the limit was reached.",
+                 "If a reply asks for nothing, talk.ask() reminds the model to answer and asks once more.",
+                 "you never suggest any of these",
+                 '"The answer it gave" is reply.answer, or None if it gave none.',
+                 '"Stop with no verdict" at the limit is return talk.stop(RAN_OUT, steps).',
+                 "Only for an outline that does more than the rules ask",
+                 "Coach the student toward a structure that meets the five rules"):
+        assert must in brief, must
+    for gone in ("Check the answer.", "Enforce the limit.", "Stop when the model stops.", "the six rules",
+                 "the two limits", "3 failed answers", "what the evidence check is", "the reminder; the refusal",
+                 "The limit is looked at once a reply", "one reply can take the count past the limit",
+                 "and none of them is made"):
+        assert gone not in brief, gone
 
 
 # What the old rule said (until Nov 11): Claude did not write the loop and did not edit my_loop.py.
@@ -807,20 +1002,31 @@ FORBIDDING = ("write the whole loop", "do not edit my_loop.py", "never paste a f
               "helps you write your loop", "one step where the student writes code")
 
 
-def test_no_text_still_forbids_claude_to_write_the_code_the_student_describes(a):
-    """The tutor's rules, every brief, the page's tasks and the student's pages agree with the new
-    rule."""
-    texts = [("tutor", a.tutor)] + [(s.id, s.brief) for s in a.steps]
-    texts += [(f"{s.id} tasks", " ".join(c.task for c in stepmod.checkpoints(s))) for s in a.steps]
-    texts += [(p.name, p.read_text(encoding="utf-8")) for p in [REPO / "README.md", REPO / "WRITEUP.md"]
-              + sorted((REPO / "instructions").glob("*.md"))]
-    found = [(where, old) for where, text in texts for old in FORBIDDING if old in flat(text)]
+# What 1a said before the outline (Nov 11 to 13): the student described the code to Claude in chat.
+DESCRIBED = ("Write code once they have described", "The change to make is theirs to describe",
+             "Write what they described and no more", "write rule 4", "or by describing each part to Claude",
+             "the code you describe", "describing it to Claude", "writes the code of your loop as you describe it",
+             "You write its loop", "you write your own in Part 1", "the student writes their own loop",
+             "You write it in my_loop.py", "Write the agent's loop")
+
+
+def test_nothing_tells_claude_to_write_1a_code_the_student_describes(a):
+    """In 1a the outline in WRITEUP.md is the design, not a description in chat. The tutor's rules,
+    1a's brief and tasks, the student's pages and agent.py agree with it."""
+    s = a.step("1a")
+    texts = [("tutor", a.tutor), ("1a brief", s.brief), ("1a tasks", " ".join(c.task for c in stepmod.checkpoints(s)))]
+    texts += [(f"{x.id} brief", x.brief) for x in a.steps if x.id != "3b"]   # 3b's code change is described
+    texts += [(p.name, p.read_text(encoding="utf-8")) for p in [REPO / "README.md", REPO / "WRITEUP.md", REPO / "agent.py"]
+              + sorted((REPO / "instructions").glob("*.md")) if p.name != "part3.md"]
+    found = [(where, old) for where, text in texts for old in FORBIDDING + DESCRIBED if old in flat(text)]
     assert not found, found
-    page = flat((REPO / "instructions" / "part1.md").read_text(encoding="utf-8"))
-    assert "or by describing each part to Claude, which then writes the code you describe." in page
-    assert "It will not write a part you have not described" in page
     readme = flat((REPO / "README.md").read_text(encoding="utf-8"))
-    assert "writes the code of your loop as you describe it, but the structure and the ideas must be yours." in readme
+    assert "In step 1a it translates your outline of the loop into Python and coaches you" in readme
+    assert "| Design the agent's loop," in readme
+    assert "You design its loop" in flat((REPO / "instructions" / "part1.md").read_text(encoding="utf-8"))
+    assert "you design your own in Part 1" in flat((REPO / "instructions" / "part0.md").read_text(encoding="utf-8"))
+    assert "You design it in step 1a, as an outline that Claude translates into my_loop.py." in \
+        flat((REPO / "agent.py").read_text(encoding="utf-8"))
 
 
 def test_3b_writes_a_code_change_as_described_and_instructions_in_their_words(a):

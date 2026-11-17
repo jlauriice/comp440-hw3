@@ -459,12 +459,18 @@ def outcome(row: dict | None) -> str:
 
 def run_limit(agent_rows: list) -> tuple[int, list]:
     """The limit of lookups the agent's results were made under, and every limit they show.
-    The loop's "You have used all 12 steps" entry carries the number, so a run made before a
-    student changed MAX_STEPS keeps its own limit. When no result shows one, the limit is
-    agent.py's as it is now, unless a result used more lookups than that (then the limit was
-    at least as many as the most any result used)."""
+    evaluate.py saves the limit with each of the agent's results ("max_steps"). In results saved
+    before it did, a loop's "You have used all 12 steps" entry carries the number, so a run made
+    before a student changed MAX_STEPS keeps its own limit. When no result shows one, the limit is
+    agent.py's as it is now, unless a result used more lookups than that (then the limit was at
+    least as many as the most any result used). That last guess holds only for loops that warned
+    the model at the limit, as every loop did before November 14; a loop that does not warn can
+    pass its limit within one reply, but its results carry the limit."""
     shown: dict[int, int] = {}
     for r in agent_rows:
+        if isinstance(r.get("max_steps"), int) and not isinstance(r.get("max_steps"), bool):
+            shown[r["max_steps"]] = shown.get(r["max_steps"], 0) + 1
+            continue
         for c in r["trace"]:
             m = OUT_OF_STEPS.search(c["result"])
             if m:
@@ -760,7 +766,7 @@ _SWAP = {"’": "'", "“": '"', "”": '"'}
 
 
 def normalize(text: str) -> str:
-    """agent.py's normalize(): the same text the agent's evidence check compares."""
+    """agent.py's normalize(): the same text agent.py's check of quotes compares."""
     for a, b in _SWAP.items():
         text = text.replace(a, b)
     return re.sub(r"\s+", " ", text).strip().lower()
@@ -801,21 +807,33 @@ def find_spans(text: str, quote: str) -> list[tuple[int, int]]:
     return spans
 
 
+def read_texts(row: dict) -> list[str]:
+    """What the agent read, as agent.py's check of quotes counts it: what each read and wikidata
+    lookup it made returned. A search result's snippet does not count, and neither does a lookup
+    the loop answered with a warning instead of making it."""
+    return [c["result"] for c in row["trace"]
+            if c["tool"] in ("read", "wikidata") and not OUT_OF_STEPS.search(c["result"])]
+
+
 def quote_places(row: dict) -> list[dict]:
-    """For each evidence quote: the trace entries whose result contains it, with positions."""
+    """For each evidence quote: the trace entries whose result contains it, with positions;
+    whether it runs from one result into the next; and whether it appears word for word in what
+    the agent read, by the same test as agent.py's unsupported_quotes(). The loop may not have
+    checked, so the results viewer says which, beside each quote."""
     places = []
-    texts = [(n, c) for n, c in enumerate(row["trace"]) if c["tool"] not in ("answer", "(reminder)")]
+    texts = [(n, c) for n, c in enumerate(row["trace"])
+             if c["tool"] not in ("answer", "(reminder)", "(refusal)", "(stopped)")
+             and not OUT_OF_STEPS.search(c["result"])]
+    seen = normalize(" ".join(read_texts(row)))
     for q in row["evidence"]:
         hits = []
         for n, call in texts:
             spans = find_spans(call["result"], q)
             if spans:
                 hits.append({"call": n, "tool": call["tool"], "spans": spans})
-        across = False
-        if not hits:
-            joined = normalize(" ".join(c["result"] for _, c in texts if c["tool"] != "search"))
-            across = bool(normalize(q)) and normalize(q) in joined
-        places.append({"quote": q, "hits": hits, "across": across})
+        read = bool(normalize(q)) and normalize(q) in seen
+        across = read and not any(hit["tool"] in ("read", "wikidata") for hit in hits)
+        places.append({"quote": q, "hits": hits, "across": across, "read": read})
     return places
 
 

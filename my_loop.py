@@ -1,7 +1,14 @@
-"""Your agent's loop, which you write in step 1a. The six rules it follows are
-on the homework page, under "1a. Write the loop" (also in instructions/part1.md).
+"""Your agent's loop, which you design in step 1a. The homework page says what the
+loop is for, under "1a. Design the loop" (also in instructions/part1.md), and the
+check tells you each rule it must follow when your loop breaks it.
 
-Check it after each rule you write. The check uses a scripted stand-in for the
+You design the loop as an outline in plain words, in WRITEUP.md under 1a. The
+loop below the line that says where it goes is Claude's translation of that
+outline, written with the parts in loop_parts.py: each line of your outline is a
+comment, with about one line of Python for it under it. To change the loop,
+change your outline and ask Claude to translate it again.
+
+Check it after each translation. The check uses a scripted stand-in for the
 model and for Wikipedia, so it needs no key and costs nothing:
 
     uv run python check_loop.py
@@ -14,19 +21,15 @@ import re
 
 import anthropic
 
+# The names below include every one the file had before the parts, so that a loop written
+# then still runs.
 from agent import (ACCEPTED, DECLINED, INSTRUCTIONS, MAX_REJECTED, MAX_STEPS, MODEL, NO_ANSWER,
                    OUT_OF_STEPS, RAN_OUT, REJECTED, REJECTED_TOO_OFTEN, REMINDED, REMINDER,
                    TOOLS, answer_problem, clean_answer, finish, run_tool)
+from loop_parts import Conversation
 
-# The six rules:
-#   1. Ask the model.
-#   2. Run its lookups.
-#   3. Send the results back.
-#   4. Check the answer.
-#   5. Enforce the limit.
-#   6. Stop when the model stops.
 
-# ---- sorting a claim into a lookup budget: 15, 8 or 3 ----
+# ---- sorting a claim into a lookup budget: 12, 8 or 3 ----
 
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
           "September", "October", "November", "December"]
@@ -84,11 +87,11 @@ def count_numbers(text):
 
 
 def lookup_budget(claim):
-    """15, 8 or 3 lookups, trying the hardest kind of claim first."""
+    """12, 8 or 3 lookups, trying the hardest kind of claim first."""
     words = len(claim.split())
     if (len(sentences(claim)) > 1 or words > 30
             or has_any(claim, CAUSAL) or has_any(claim, AGGREGATE)):
-        return 15
+        return 12
     if (16 <= words <= 30 or count_numbers(claim) >= 2 or count_names(claim) >= 3
             or has_any(claim, JOINING) or has_any(claim, COMPARISON) or has_any(claim, RATE)):
         return 8
@@ -96,14 +99,20 @@ def lookup_budget(claim):
 
 
 def run_agent(claim, client=None, max_steps=None, lookup=run_tool):
-    """Check one claim. Returns what finish() returns."""
+    """Check one claim. Returns what talk.accept() or talk.stop() returns."""
     client = client or anthropic.Anthropic()
     system = INSTRUCTIONS.read_text()
     messages = [{"role": "user", "content": f"Claim: {claim}"}]
     trace, read_so_far = [], []
+    talk = Conversation(claim, client, system, messages, trace, read_so_far, lookup)
     steps = 0          # lookups made so far
-    rejected = 0       # answers the loop has sent back so far
+    rejected = 0       # answers sent back so far
 
+    # Your loop should repeatedly call the model with the message history so far, and ask for
+    # its next step. It should check whether the model has given an answer yet. If not, it should
+    # make the lookups that step asks for, and add what they return to the history. It should
+    # also pay attention to whether the loop has reached its limit: a claim that runs out of
+    # lookups cannot be decided.
     # ---- your loop goes below this line (step 1a) ----
     if max_steps is None:
         max_steps = lookup_budget(claim)

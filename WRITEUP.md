@@ -12,7 +12,7 @@ answer. The homework page ticks a step when every answer in its section is fille
 In this homework you will:
 
 - Understand what makes a program an *agent*. You will study a language model that picks the next Wikipedia search query, reads the page that comes back, and decides when to stop.
-- Gain hands-on experience with the loop around the model by writing it yourself: its tools, its instructions, its limit of 12 lookups, and the check that every sentence it quotes really appears in what it read.
+- Gain hands-on experience with the loop around the model by writing it yourself: its tools, its instructions, and its limit of 12 lookups.
 - Compare the agent with two simpler methods on your claims, and measure how effective each one is.
 - Check the agent's evidence yourself, and decide whether accuracy alone is a fair measure of it.
 
@@ -59,20 +59,20 @@ Describe Wikidata briefly. Why may it be important to this task?
 
 # Part 1: How the agent works
 
-## 1a. Write the loop
+## 1a. Design the loop
 
-What does your loop send to the model on each turn? Give the line numbers in `my_loop.py`.
+Your loop should repeatedly call the model with the message history so far, and ask for its next step. It should check whether the model has given an answer yet. If not, it should make the lookups that step asks for, and add what they return to the history. It should also pay attention to whether the loop has reached its limit: a claim that runs out of lookups cannot be decided. One limit is set for you: 12 lookups for a claim.
 
-> Lines 113–114 , It sends the model type, token limit, system instructions, list of tools available and running message history  
+The Background and an example outline are under 1a on the homework page, and in [instructions/part1.md](instructions/part1.md#1a-design-the-loop).
 
-What are the ways your loop can end? Give the line number of each.
+Write your outline of the loop in the code block: what it remembers, what it repeats, and every way it stops.
 
-> It can end everytime we have a return finish(...) which I saw 5, 
-> Lines 120 - the model refuses to answer prompt
-> Lines 123 - not sure why here 
-> Lines 137 - 138 everything seems to be okay, and model manages to respond convincingly
-> Lines 143-144 the model's answer fails validation Max_Rejected times
-> Line 151 , my twist, model runs out of budget for lookups
+```
+```
+
+List each thing your loop remembers from one turn to the next, and say what would go wrong without it.
+
+>
 
 Now open `reference_loop.py` and compare it with your loop. Describe one difference in implementation and the resulting effects on agent behavior.
 
@@ -88,13 +88,13 @@ List your lookups, in order. Ask Claude to paste every column but the last from 
 |---|---|---|---|
 | 1 | | | |
 
-What is your verdict on the claim, and which sentence or sentences are most important?
+What is your verdict on the claim, and which sentence or sentences from what you read is it based on?
 
 >
 
 ## 1c. Watch the agent work
 
-List the three traces you read closely. At least one should be a claim the agent got wrong (if it had errors).
+List the three traces you read closely. At least one should be a claim the agent got wrong (if it got any wrong).
 
 | # | Claim (first few words) | Articles | Did it match the dataset's label? | Did it get there for a good reason? Why or why not |
 |---|---|---|---|---|
@@ -122,7 +122,7 @@ Predict the share of claims each version will get right (its verdict matches the
 | One search | | | | |
 | Agent | | | | |
 
-How many lookups will the agent make per claim, on average? Will that grow with the number of articles? Why?
+How many lookups will the agent make per claim, on average? Why?
 
 >
 
@@ -139,7 +139,7 @@ How do the results compare with your predictions? Where were you furthest off? U
 
 >
 
-Does the gap between the agent and the one-search baseline grow with the number of articles? If it does not, what might explain that?
+Does the gap between the agent and the one-search baseline grow with the number of articles? What in the claims or the traces explains what you see?
 
 >
 
@@ -149,7 +149,7 @@ The no-tools baseline read nothing. How did it do, and what does that tell you a
 
 ## 2b. Check the evidence yourself
 
-Fill in one row for each of the first five claims in your Part 2 run, in the order of the claims file, where the agent's verdict is *supported* or *refuted*.
+Fill in one row for each of the first five claims in your full run, in the order of the claims file, where the agent's verdict is *supported* or *refuted*.
 
 | # | Claim (first few words) | Agent's verdict | Matched the dataset's label? | Does the quoted evidence support that verdict? | Why or why not |
 |---|---|---|---|---|---|
@@ -171,7 +171,7 @@ Is accuracy alone a good measure of this agent? Why or why not?
 
 ## 3a. Sort the failures
 
-Fill in one row for each of the first eight failures in your full run from 1e, rows 1 to 8 of the claims table for runs/part2 with "Result" in "The agent" box set to "does not match the dataset's label (any reason)". If you have fewer than eight, fill a row for each and delete the rest. Type your labels before you ask Claude for its own. Then ask Claude to add its labels to the last column, or type them in yourself.
+Fill in one row for each of the first eight failures in your full run, rows 1 to 8 of the claims table for runs/part2 with "Result" in "The agent" box set to "does not match the dataset's label (any reason)". If you have fewer than eight, fill a row for each and delete the rest.
 
 | Row | Claim (first few words) | Your label | The entry of the trace that shows it | Is the dataset's label right? (yes, no or can't tell) | Claude's label |
 |---|---|---|---|---|---|
@@ -198,7 +198,7 @@ What did you change, and why did you expect it to help?
 
 >
 
-How many of your evaluation claims did the agent match before the change and after it? Which of your eight failures from 3a now match?
+How many of your evaluation claims did the agent match before the change and after it? Which of your failures from 3a now match?
 
 >
 
@@ -219,3 +219,20 @@ What did your claims show you about Wikipedia as a source? Where it was thin or 
 Your numbers rest on 100 claims. Which of your conclusions would you trust on another 100 claims, which might be chance, and what would you measure to find out?
 
 >
+
+## Answers to questions the update removed
+
+An update to the homework removed these questions. My answers to them are kept here as I wrote them.
+
+What does your loop send to the model on each turn? Give the line numbers in `my_loop.py`.
+
+> Lines 113–114 , It sends the model type, token limit, system instructions, list of tools available and running message history  
+
+What are the ways your loop can end? Give the line number of each.
+
+> It can end everytime we have a return finish(...) which I saw 5, 
+> Lines 120 - the model refuses to answer prompt
+> Lines 123 - not sure why here 
+> Lines 137 - 138 everything seems to be okay, and model manages to respond convincingly
+> Lines 143-144 the model's answer fails validation Max_Rejected times
+> Line 151 , my twist, model runs out of budget for lookups

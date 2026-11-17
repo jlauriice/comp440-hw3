@@ -27,7 +27,9 @@ from typing import Callable
 
 FETCH_EVERY = 30 * 60
 FETCH_TIMEOUT = 20
-BUSY = ("MERGE_HEAD", "rebase-merge", "rebase-apply", "CHERRY_PICK_HEAD", "REVERT_HEAD")
+# What git leaves in its folder while it is in the middle of something, and that thing in words.
+BUSY = {"MERGE_HEAD": "a merge", "rebase-merge": "a rebase", "rebase-apply": "a rebase",
+        "CHERRY_PICK_HEAD": "a cherry-pick", "REVERT_HEAD": "a revert"}
 # Files a program writes, not the student. A student's own uv may rewrite uv.lock; the page never
 # commits that, and puts the file back before an update so it can't stand in the update's way.
 GENERATED = ("uv.lock",)
@@ -99,6 +101,18 @@ class Updates:
         d = Path(self.git("rev-parse", "--git-dir").stdout.strip() or ".git")
         return d if d.is_absolute() else self.repo / d
 
+    def busy(self) -> str | None:
+        """What git is in the middle of in this folder ("a merge", "a rebase", "a cherry-pick" or "a
+        revert"), or None. Nothing may be committed then: a commit would conclude a merge that
+        stopped on a conflict, with its conflict markers."""
+        d = self.git_dir()
+        what = next((what for x, what in BUSY.items() if (d / x).exists()), None)
+        # `git stash pop` and `git merge --squash` that stop on a conflict leave none of those files,
+        # only files the index lists as not yet merged. `git add -A` would mark them merged, markers and all.
+        if what is None and self.git("ls-files", "--unmerged", timeout=10).stdout.strip():
+            what = "a merge"
+        return what
+
     def apply(self, save: Callable[[], bool]) -> dict:
         """Merge the class repository's new commits. `save` commits the student's changes first
         and says whether that worked. Returns {"ok": bool, "changed": [paths]}."""
@@ -106,7 +120,7 @@ class Updates:
             self.check()
             if not self.missing:
                 return {"ok": True, "changed": []}
-            if any((self.git_dir() / x).exists() for x in BUSY) or not save():
+            if self.busy() or not save():
                 return {"ok": False, "changed": []}
             for f in GENERATED:
                 if self.git("diff", "--quiet", "--", f).returncode == 1:

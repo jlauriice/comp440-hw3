@@ -6,8 +6,7 @@ measure the effectiveness of different methods. You will:
 - Understand what makes a program an *agent*. You will study a language model that picks the next Wikipedia search query,
   reads the page that comes back, and decides when to stop.
 - Gain hands-on experience with the loop around the model by writing it yourself: its tools, its
-  instructions, its limit of 12 lookups, and the check that every sentence it quotes really appears in
-  what it read.
+  instructions, and its limit of 12 lookups.
 - Compare the agent with two simpler methods on your claims, and measure how effective each one is.
 - Check the agent's evidence yourself, and decide whether accuracy alone is a fair measure of it.
 
@@ -31,6 +30,12 @@ The claims come from HoVer, a public dataset of claims that each need two, three
 articles to check. Many claims do not name the page that holds the answer, so one fact has to be found before
 you know which page to read next. You will study how the agent
 breaks a claim into pieces, looks up each one, and synthesizes the results. 
+
+In Part 1 you design the loop around the model, the program that makes it an agent. Your loop should
+repeatedly call the model with the message history so far, and ask for its next step. It should check
+whether the model has given an answer yet. If not, it should make the lookups that step asks for, and add
+what they return to the history. It should also pay attention to whether the loop has reached its limit:
+a claim that runs out of lookups cannot be decided.
 
 ## What you need before you start
 
@@ -82,8 +87,8 @@ If you are curious, here are additional details.
 - The homework page lists every step, 0a to 3c, and ticks each one when it is done. Part 3 is extra
   credit. For each step it shows a short summary and its tasks. Below the tasks, the step's instructions,
   from the pages in `instructions/`, open with a click, part by part: Words in this step, Actions,
-  Interpreting output, Write-up, Troubleshooting and Hint (and in 1a, The six rules). Open Actions for
-  the exact commands.
+  Interpreting output, Write-up, Troubleshooting and Hint (and in 1a, Background and Writing your
+  outline). Open Actions for the exact commands.
 - Claude Code is your tutor and lab assistant for each step. For every step after the first, the homework
   page gives two choices, each with a **Copy** button: a prompt to paste into the Claude session you
   already have open, or a command to paste into a terminal tab in the homework's folder to start a new
@@ -95,7 +100,8 @@ If you are curious, here are additional details.
   paragraph put a line with just `>` between the two.
 - Claude runs commands for you, explains the code, the tools, Wikipedia's API and the scores as often as
   you ask, and pastes a program's output into `WRITEUP.md` where a question asks for it. In step 1a it
-  writes the code of your loop as you describe it, but the structure and the ideas must be yours.
+  translates your outline of the loop into Python and coaches you, but the structure and the ideas must
+  be yours.
 - The results viewer, **Results** at the top of the homework page, is where you read your runs: each
   run's accuracy, lookups and time, each claim's verdicts from all three versions, the agent's trace one
   entry at a time, and two runs side by side.
@@ -114,14 +120,14 @@ If you are curious, here are additional details.
 | Part | What you do | Weight |
 |---|---|---|
 | [Part 0: Set up and check one claim](instructions/part0.md) | Get your copy running, then check one claim three ways: with an LLM alone, with one Wikipedia search, and with the agent | 15% |
-| [Part 1: How the agent works](instructions/part1.md) | Write the agent's loop, check one claim yourself with its tools, watch it work, write its instructions, and start the full run while you predict how it will do | 35% |
+| [Part 1: How the agent works](instructions/part1.md) | Design the agent's loop, check one claim yourself with its tools, watch it work, write its instructions, and start the full run while you predict how it will do | 35% |
 | [Part 2: The agent against the baselines](instructions/part2.md) | Compare accuracy by how many articles a claim needs, and check the agent's evidence yourself | 50% |
 | [Part 3 (extra credit): Why the agent fails, and one change](instructions/part3.md) | Sort the agent's failures on your claims, make one change, and write up what you found | Extra credit |
 
-I expect this homework to take about 5 hours in all, in three sittings: about an hour for Part 0, about
-3 hours for Part 1, and about an hour for Part 2. On top of that, the full run in
-Part 1 takes about 10 minutes while you do other things. Part 3, which is extra credit, takes about an
-hour and 20 minutes more, and its run about 6 minutes.
+I expect this homework to take about 5 hours in all, in three sittings: about an hour for Part 0,
+a little under 3 hours for Part 1, and about an hour for Part 2. On top of that, the full run in
+Part 1 takes about 10 minutes while you do other things. Part 3, which is extra credit, takes about 2
+hours more, and its run about 6 minutes.
 
 ## Words this homework uses
 
@@ -132,7 +138,7 @@ hour and 20 minutes more, and its run about 6 minutes.
   step 1a, and **the reference loop**, `reference_loop.py`, until then. In the loop, the model picks the
   next lookup, reads what comes back, and decides when to answer.
 - A **tool** is one of the four things the agent can call: `search`, `read`, `wikidata` and `answer`. A
-  **lookup** is a call to one of the first three. The loop allows at most 12 lookups for one claim.
+  **lookup** is a call to one of the first three. The agent's limit is 12 lookups for one claim.
 - A **trace** is the agent's lookups for one claim, in order, with what each returned. An **entry** is
   one numbered line of a trace, a lookup or an answer.
 - **The model** is Claude Haiku, the small LLM that the agent and both baselines call. **Claude** is your

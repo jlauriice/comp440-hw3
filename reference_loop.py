@@ -1,5 +1,6 @@
 """The reference loop. The homework uses it in Part 0, before your own loop, in
 my_loop.py, has passed the check (uv run python check_loop.py), and not after.
+It is built from the same parts as yours, in loop_parts.py.
 
 Do not open this file before step 1a is done: reading it first gives the
 exercise away. After that, compare it with yours (the write-up asks you to).
@@ -7,68 +8,26 @@ exercise away. After that, compare it with yours (the write-up asks you to).
 
 import anthropic
 
-from agent import (ACCEPTED, DECLINED, INSTRUCTIONS, MAX_REJECTED, MAX_STEPS, MODEL, NO_ANSWER,
-                   OUT_OF_STEPS, RAN_OUT, REJECTED, REJECTED_TOO_OFTEN, REMINDED, REMINDER,
-                   TOOLS, answer_problem, clean_answer, finish, run_tool)
+from agent import INSTRUCTIONS, MAX_STEPS, RAN_OUT, run_tool
+from loop_parts import Conversation
 
 
 def run_agent(claim, client=None, max_steps=MAX_STEPS, lookup=run_tool):
-    """Check one claim. Returns a dict with the verdict, the evidence, the
-    trace of every step, and the number of lookups."""
+    """Check one claim. Returns what talk.accept() or talk.stop() returns."""
     client = client or anthropic.Anthropic()
     system = INSTRUCTIONS.read_text()
     messages = [{"role": "user", "content": f"Claim: {claim}"}]
     trace, read_so_far = [], []
-    steps = 0
-    rejected = 0        # how many answers the loop has sent back
-    warned = False      # has it been told it is out of steps?
+    talk = Conversation(claim, client, system, messages, trace, read_so_far, lookup)
+    steps = 0           # lookups made so far
 
     while True:
-        response = client.messages.create(
-            model=MODEL, max_tokens=16000, system=system, tools=TOOLS, messages=messages,
-        )
-        messages.append({"role": "assistant", "content": response.content})
-
-        if response.stop_reason == "refusal":
-            return finish(claim, None, [], DECLINED, trace, steps)
-
-        calls = [block for block in response.content if block.type == "tool_use"]
-        if not calls:
-            # Claude stopped without calling a tool. Remind it once how to finish.
-            if trace and trace[-1]["tool"] == "(reminder)":
-                return finish(claim, None, [], NO_ANSWER, trace, steps)
-            trace.append({"tool": "(reminder)", "input": {}, "result": REMINDED})
-            messages.append({"role": "user", "content": REMINDER})
-            continue
-
-        results = []
-        warned_before = warned
-        for call in calls:
-            if call.name == "answer":
-                answer = clean_answer(call.input)
-                problem = answer_problem(answer, read_so_far)
-                if problem is None:
-                    trace.append({"tool": "answer", "input": call.input, "result": ACCEPTED})
-                    return finish(claim, answer["verdict"], answer["evidence"],
-                                  answer["explanation"], trace, steps)
-                result = REJECTED + problem
-                rejected += 1
-                if rejected >= MAX_REJECTED:
-                    trace.append({"tool": "answer", "input": call.input, "result": result})
-                    return finish(claim, None, [], REJECTED_TOO_OFTEN.format(n=rejected),
-                                  trace, steps)
-            elif steps >= max_steps:
-                if warned_before:
-                    # It was told last turn that it was out of steps: stop here.
-                    return finish(claim, None, [], RAN_OUT, trace, steps)
-                result = OUT_OF_STEPS.format(n=max_steps)
-                warned = True
-            else:
-                steps += 1
-                result = lookup(call.name, call.input)
-                if call.name != "search":  # snippets are too short to count as evidence
-                    read_so_far.append(result)
-            trace.append({"tool": call.name, "input": call.input, "result": result})
-            results.append({"type": "tool_result", "tool_use_id": call.id, "content": result})
-
-        messages.append({"role": "user", "content": results})
+        reply = talk.ask()
+        if reply.answer:
+            return talk.accept(reply.answer, steps)
+        if steps >= max_steps:
+            return talk.stop(RAN_OUT, steps)
+        for call in reply.lookups:
+            talk.give(call, talk.run(call))
+            steps += 1
+        talk.send_results()

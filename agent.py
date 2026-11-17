@@ -1,18 +1,20 @@
 """The fact-checking agent: everything but its loop.
 
 Read this file top to bottom. It holds the settings, the four tools the model
-can ask for, the evidence check that answers must pass, the sentences a loop
-sends back and records, and finish(), which every loop returns.
+can ask for, a check of an answer's quotes that a loop may use (the reference
+loop does not), the sentences a loop sends back and records, and finish(),
+which every loop returns.
 
 The loop itself is in another file. Each turn it sends the model the
-conversation so far, runs the lookups the model asked for, and adds what they
-returned to the conversation, until the model gives an answer that passes the
-evidence check or a limit ends it first. You write it in my_loop.py, in step
-1a. In Part 0, before your loop has ever passed the check (uv run python
-check_loop.py), the agent uses the reference loop in reference_loop.py. Once
-your loop has passed, the agent runs on your loop and no other: if a later
-check finds a rule broken, no agent run starts until your loop passes again.
-run_agent(), at the bottom of this file, decides.
+conversation so far, and stops if the model has answered. If not, it makes the
+lookups the model asked for and adds what they returned to the conversation.
+Once the limit of lookups is reached, it stops with no verdict. You design it
+in step 1a, as an outline that Claude translates into my_loop.py. In Part 0,
+before your loop has ever passed the check (uv run python check_loop.py), the
+agent uses the reference loop in reference_loop.py. Once your loop has passed,
+the agent runs on your loop and no other: if a later check finds a rule
+broken, no agent run starts until your loop passes again. run_agent(), at the
+bottom of this file, decides.
 """
 
 import re
@@ -21,8 +23,8 @@ from pathlib import Path
 import wiki
 
 MODEL = "claude-haiku-5-5"
-MAX_STEPS = 12          # the most lookups the agent may make for one claim
-MAX_REJECTED = 3        # the most answers the loop sends back before it gives up
+MAX_STEPS = 12          # the agent's limit of lookups for one claim
+MAX_REJECTED = 3        # for a loop that checks quotes: the most answers it sends back before it gives up
 INSTRUCTIONS = Path(__file__).parent / "instructions.md"
 VERDICTS = ["supported", "refuted", "doesn't say"]
 
@@ -95,7 +97,10 @@ def run_tool(name, args):
     return f"There is no tool called {name!r}."
 
 
-# ---------- the evidence check ----------
+# ---------- a check of an answer's quotes ----------
+# The reference loop does not use it. A loop that does uses it through talk.problem_with() in
+# loop_parts.py. The results viewer makes the same test on every saved quote, and says beside each
+# one whether it appears word for word in what the agent read.
 
 def normalize(text):
     text = text.replace("’", "'").replace("“", '"').replace("”", '"')
@@ -109,14 +114,20 @@ def unsupported_quotes(evidence, read_so_far):
 
 
 def clean_answer(args):
-    """The answer() call's input, with the evidence always a list of quotes and
-    always an explanation. Claude doesn't always follow the tool's schema: it
-    sometimes sends one quote as a plain string (and looping over a string
-    would check it one letter at a time), or leaves the explanation out."""
+    """The answer() call's input, with the evidence always a list of quotes,
+    always an explanation, and a verdict that is one of the three or None.
+    Claude doesn't always follow the tool's schema: it sometimes sends one
+    quote as a plain string (and looping over a string would check it one
+    letter at a time), or leaves the explanation out. A verdict that is
+    missing or not one of the three becomes None, no verdict, so that a loop
+    that accepts every answer does not save a verdict the homework has no
+    word for."""
     evidence = args.get("evidence") or []
     if isinstance(evidence, str):
         evidence = [evidence]
-    return {**args, "evidence": evidence, "explanation": args.get("explanation") or ""}
+    verdict = args.get("verdict") if args.get("verdict") in VERDICTS else None
+    return {**args, "verdict": verdict, "evidence": evidence,
+            "explanation": args.get("explanation") or ""}
 
 
 def answer_problem(answer, read_so_far):
@@ -136,7 +147,10 @@ def answer_problem(answer, read_so_far):
 # ---------- what a loop sends back and records ----------
 
 # The exact sentences a loop uses, so that check_loop.py, the results viewer
-# and both loops agree on them.
+# and every loop agree on them. The reference loop uses ACCEPTED and RAN_OUT, and
+# the parts in loop_parts.py use REMINDER, REMINDED, NO_ANSWER, DECLINED and
+# TOO_MANY_ASKS; the rest are for a loop that checks quotes or warns the model at
+# the limit.
 ACCEPTED = "accepted"                                   # the result recorded for an accepted answer
 REJECTED = "Answer rejected. "                          # followed by what answer_problem() said
 REJECTED_TOO_OFTEN = "The agent's answer was rejected {n} times."
@@ -145,7 +159,9 @@ RAN_OUT = "The agent ran out of steps."
 REMINDER = "Please finish by calling answer()."          # sent to the model
 REMINDED = "Asked it to call answer()."                  # recorded in the trace, tool "(reminder)"
 NO_ANSWER = "The agent stopped without answering."
-DECLINED = "The model declined to check this claim."
+DECLINED = "The model declined to check this claim."     # also recorded in the trace, tool "(refusal)"
+# The parts' last resort, for a loop with no stop of its own: also recorded in the trace, tool "(stopped)".
+TOO_MANY_ASKS = "The agent asked the model {n} times for this claim and was stopped."
 
 
 def finish(claim, verdict, evidence, explanation, trace, steps, tokens=None):
@@ -170,7 +186,7 @@ def finish(claim, verdict, evidence, explanation, trace, steps, tokens=None):
 # ---------- which loop runs ----------
 
 LOOP_CHECK = Path(__file__).parent / "runs" / "part1" / "loop-check.txt"
-# The line check_loop.py prints, after its six, for a loop that passes finish() a token count.
+# The line check_loop.py prints, after its rules, for a loop that passes finish() a token count.
 TOKEN_RULE = "Count the tokens (extra credit)"
 
 

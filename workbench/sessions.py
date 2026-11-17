@@ -72,6 +72,9 @@ LOOKUPS = re.compile(r"^Lookups: (\d+)", re.M)
 
 
 KEY = re.compile(r"sk-ant-[^\s\"'`<>]*")
+# A write-up question that asks Claude to paste output into it (1b's table, 2a's report): the page
+# says where its answer goes, not that the student types it.
+PASTED = "Ask Claude to paste"
 # The message that starts a step, in a new session ("Start step 0b.") or in one that was on another
 # step (the page's prompt to continue). A conversation's stretch for a step runs from it to the next.
 START = re.compile(r"^Start step (\d+[a-z])\.")
@@ -413,7 +416,7 @@ class StepSession:
         marks = {r.get("n"): r["t"] for r in pages if r["kind"] in ("checkpoint", "milestone")}
         cps, done_at, covered = [], [], set()
         for i, c in enumerate(checkpoints(s), 1):
-            item = {"n": i, "text": c.text, "task": c.task or c.text, "auto": bool(c.files or c.slots), "files": [], "slots": [],
+            item = {"n": i, "text": c.text, "task": c.task or c.text, "own_task": bool(c.task), "auto": bool(c.files or c.slots), "files": [], "slots": [],
                     "tick": c.tick or bool(c.files or c.slots)}
             t = None
             if c.files or c.slots:
@@ -504,7 +507,9 @@ class StepSession:
             now = {"plain": f"type your {open_q['question'].lower()} after {open_q['question']}: at the top "
                             f"of {a.writeup}, in your editor."}
         elif open_q:
-            now = {"question": open_q["question"], "how": f"Write your answer in {a.writeup}, under {label}, in your editor."}
+            how = (f"It goes in {a.writeup}, under {label}." if PASTED in open_q["question"]
+                   else f"Write your answer in {a.writeup}, under {label}, in your editor.")
+            now = {"question": open_q["question"], "how": how}
         else:
             now = {"todo": todo} if todo and not st["complete"] else {"done": True}
         shown = entries if last is None else entries[-last:]
@@ -516,8 +521,10 @@ class StepSession:
     def slot(self, k: str, slots: dict[str, str]) -> dict:
         """One answer slot as the page shows it: its question, the answer, and where to type it."""
         plain = " / " not in k                  # Name: at the top of the write-up
-        where = (f"Not written yet. Type it after {k}: at the top of {self.hub.assignment.writeup}." if plain else
-                 f"Not written yet. Type it in {self.hub.assignment.writeup}, under {self.hub.assignment.label(self.step)}.")
+        wp, label = self.hub.assignment.writeup, self.hub.assignment.label(self.step)
+        where = (f"Not written yet. Type it after {k}: at the top of {wp}." if plain else
+                 f"Not written yet. It goes in {wp}, under {label}." if PASTED in k.split(" / ")[-1] else
+                 f"Not written yet. Type it in {wp}, under {label}.")
         return {"question": k.split(" / ")[-1], "answer": slots.get(k, ""), "filled": filled(slots.get(k)),
                 "plain": plain, "todo": where}
 
@@ -992,6 +999,9 @@ class Hub:
             counts.append(f"{i}. {c.text} ({how})")
         counts_text = "\n".join(counts) or "(none listed)"
         manual = not (s.slots or s.files)
+        # The step's time, from the same `minutes` the page shows beside its title, so the two agree.
+        took = (f"This step takes about {s.minutes} minute{'' if s.minutes == 1 else 's'}, as the page says. "
+                "Say so if the student asks.\n") if s.minutes else ""
         return f"""
 {a.tutor.strip()}
 
@@ -999,7 +1009,7 @@ class Hub:
 
 You help with one step, and only this one: {label}, "{s.title}", in Part {s.part} ({part.get('title', '')}).
 What this step is, as the page says it under the step's title: {s.summary.strip()}
-The student talks to you in a terminal. Beside it, a web page shows every step of the assignment,
+{took}The student talks to you in a terminal. Beside it, a web page shows every step of the assignment,
 each with its own Claude Code session, and this step's instructions, which say:
 
 <step-instructions>
@@ -1038,8 +1048,8 @@ How the page works, so you don't duplicate it:
 - It commits "Part {s.part} done" when every step of Part {s.part} is complete. Never run git commit,
   git push or anything that rewrites history; those calls are refused.
 - If the student asks about another step, name it, and say in one line that they start it from
-  that step on the page: its prompt, pasted into this chat, moves this session onto it. The other
-  steps are:
+  that step on the page: its prompt, pasted into this chat, moves this session onto it, and its
+  command starts a new session for it. The other steps are:
 {others}
 
 Keep the page up to date with the `page` skill, using `{label}` as the step: post a one-line status

@@ -3,7 +3,9 @@
     uv run python -m workbench.claude_md
 
 A session the page starts leaves this file out (its command has `--setting-sources user`), so it
-reaches only a Claude started in this folder some other way. It sends the student to the homework
+reaches only a Claude started in this folder some other way. It first gives the one thing done
+there instead of on the page, an update by hand (read UPDATE.md from the class repository and
+follow it, with the page left stopped). For anything else it sends the student to the homework
 page, helps if the page won't start, and gives the homework's tutor rules from steps.toml for a
 student who keeps working there anyway. tests/test_workbench.py fails when this file and
 steps.toml are out of step: run this again after changing the tutor text.
@@ -19,14 +21,25 @@ REPO = Path(__file__).resolve().parent.parent
 
 
 def text(a: Assignment) -> str:
+    url = a.upstream or "the class repository's address"
     return f"""# {a.title}
 
 <!-- Written by `uv run python -m workbench.claude_md` from steps.toml. Change steps.toml, then
 run that command again. Don't edit this file by hand. -->
 
-This homework is done on the homework page, not in a Claude session started here. Before anything
-else, tell the student so in two sentences: run this in a terminal in this folder, and leave that
-terminal open while they work:
+If the student asks to update the homework, or says the Update button on the homework page failed,
+do only this. Run `git fetch upstream` (if there is no remote named upstream, first run
+`git remote add upstream {url}`),
+then `git show upstream/main:UPDATE.md`, and follow that file exactly: it is the instructor's
+current procedure for bringing the class repository's updates into this copy without losing the
+student's work. Do not tell the student to start the homework page: the update needs the page
+stopped, and the file's last step says when to start it again. Read the file from the class
+repository every time, because the copy of UPDATE.md in this folder may be old. Its steps move the
+student's answers and never write one, so the tutor rules below allow them.
+
+Everything else in this homework is done on the homework page, not in a Claude session started
+here. Unless the student asked for an update, tell them so before anything else, in two sentences:
+run this in a terminal in this folder, and leave that terminal open while they work:
 
     uv run python -m workbench
 

@@ -18,13 +18,12 @@ or 4).
 
 **Actions:**
 
-1. Start this step with Claude: paste its prompt from the homework page into the Claude session you
-   have open, or start a new session with its command (type `/exit` first if another session is
-   open in that terminal).
-2. Check that the full run has finished: it ends with two tables in the tab where you started it.
-3. Open **Results** at the top of the homework page, then "runs/part2", and read "Accuracy".
-4. Ask Claude to paste the report into the empty block under 2a in `WRITEUP.md`.
-5. Type your answers to the three questions in `WRITEUP.md`, in your editor, under 2a.
+1. Check that the full run has finished: the homework page ticks this when it has. If it has not,
+   look at the run's terminal tab. If the run is still going, wait there for its two tables; if it has
+   stopped, start it again in a terminal tab of your own (see Troubleshooting).
+2. Open **Results** at the top of the homework page, then "runs/part2", and read "Accuracy".
+3. Ask Claude to paste the report into the empty block under 2a in `WRITEUP.md`.
+4. Type your answers to the three questions in `WRITEUP.md`, in your editor, under 2a.
 
 **Interpreting output:** The report's first table gives, for each version, how many claims matched the
 dataset's label out of how many: by number of articles, for all 100, and by the dataset's label. The
@@ -35,7 +34,7 @@ are both fine in your answers.
 
 - Ask Claude to paste the report of your full run, from `runs/part2/report.txt`, into the empty block below.
 - How do the results compare with your predictions? Where were you furthest off? Use the numbers from your run, by number of articles.
-- Does the gap between the agent and the one-search baseline grow with the number of articles? If it does not, what might explain that?
+- Does the gap between the agent and the one-search baseline grow with the number of articles? What in the claims or the traces explains what you see?
 - The no-tools baseline read nothing. How did it do, and what does that tell you about these claims?
 
 **Troubleshooting:**
@@ -43,6 +42,8 @@ are both fine in your answers.
 - The run stopped early, or its tables end with a line saying some runs stopped with an error. Run
   `uv run python evaluate.py data/eval.jsonl --out runs/part2` again. It keeps every claim it already
   finished.
+- The tables end with "N runs gave no verdict". That is not an error: the run is finished, and those
+  claims count as wrong.
 
 ## 2b. Check the evidence yourself
 
@@ -52,18 +53,15 @@ In this step you find out whether the agent's quoted evidence really supports it
 
 **Actions:**
 
-1. Start this step with Claude: paste its prompt from the homework page into the Claude session you
-   have open, or start a new session with its command (type `/exit` first if another session is
-   open in that terminal).
-2. Open **Results** at the top of the homework page, then "runs/part2".
-3. Click "Clear the filters" under the claims filters.
-4. Set "Verdict" in "The agent" box to "supported or refuted"; leave "Order" at "Order of the claims file".
-5. Click row 1. Under "Quoted evidence", click each "entry N" to read that quote highlighted in the trace.
-6. Decide whether the quoted evidence supports the agent's verdict. If you are unsure, click "open the
+1. Open **Results** at the top of the homework page, then "runs/part2".
+2. Click "Clear the filters" under the claims filters.
+3. Set "Verdict" in "The agent" box to "supported or refuted"; leave "Order" at "Order of the claims file".
+4. Click row 1. Under "Quoted evidence", click each "entry N" to read that quote highlighted in the trace.
+5. Decide whether the quoted evidence supports the agent's verdict. If you are unsure, click "open the
    live page" to see today's page at that quote.
-7. Fill in its row of the table in `WRITEUP.md`, in your editor, under 2b. In the results viewer, click
+6. Fill in its row of the table in `WRITEUP.md`, in your editor, under 2b. In the results viewer, click
    "Next →" and do the same for each row up to row 5.
-8. Type your answers to the two questions in `WRITEUP.md`, in your editor, under 2b.
+7. Type your answers to the two questions in `WRITEUP.md`, in your editor, under 2b.
 
 **Interpreting output:** Under "The agent", a claim's page says whether its verdict "matches the
 dataset's label": that is the table's fourth column. To read more of a page as the agent read it, ask
@@ -76,13 +74,15 @@ uv run python lookup.py --no-log read "<page title>" "<section>"
 
 **Write-up:** In `WRITEUP.md`, under 2b, fill in the table and answer:
 
-- Fill in one row for each of the first five claims in your Part 2 run, in the order of the claims file, where the agent's verdict is *supported* or *refuted*.
+- Fill in one row for each of the first five claims in your full run, in the order of the claims file, where the agent's verdict is *supported* or *refuted*.
 - Of the five, how many matched the dataset's label, and for how many of those does the quoted evidence support the verdict?
 - Is accuracy alone a good measure of this agent? Why or why not?
 
-**Hint:** The loop has already checked that each quote appears in something the agent read. A quote can
-be real and still not support the verdict. For a verdict of *refuted*, ask whether the quotes show that
-the claim is false.
+**Hint:** The loop the homework asks for does not check the quotes, so under each one the results
+viewer says whether it appears word for word in something the agent read. A quote can be real and still
+not support the verdict. A quote that does not appear word for word may be a sentence the agent read with
+a few words changed, or something no page says. For a verdict of *refuted*, ask whether the quotes show
+that the claim is false.
 
 Some claims are worded oddly, because people made them by rewriting other claims. Take each as written,
 and if you cannot tell what it asserts, say so in its row.

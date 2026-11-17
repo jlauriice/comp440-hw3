@@ -19,6 +19,7 @@ saves. What the page does by itself (README.md beside this file says more):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import mimetypes
 import os
@@ -49,6 +50,13 @@ SETTLE = 30                     # seconds a committed part's changes sit still b
 CONVO_SETTLE = 120              # and seconds its conversations sit still, so a commit never cuts one off
 RETRY_PUSH = 5 * 60
 HELP = "post in #comp440-f26 on Slack"
+# After an Update that failed: how to update by hand. A plain `claude` in the homework folder reads
+# UPDATE.md from the class repository and follows it (CLAUDE.md says so).
+UPDATE_BY_HAND = ["Stop this page: press Ctrl-C in the terminal where it runs.",
+                  "In a terminal in your homework folder, run claude.",
+                  'Tell Claude "update my homework", and answer what it asks.']
+PAUSED = ("Git is in the middle of {} in this folder, so the page is not saving or pushing your work. It "
+          "starts again by itself once that is finished or undone.")
 NOT_A_CLONE = ("This folder is not a git clone of your fork, so the page cannot save your work to GitHub or "
                "bring you updates. Get the homework the way the README says: fork the repository on GitHub, "
                "then run git clone on your fork, and start the page in that folder.")
@@ -85,6 +93,7 @@ class App:
         self.stamp = self.file_stamp()
         self.version = 1
         self.code = self.code_stamp()
+        self.code_bytes = self.code_digest()
         self.updates = Updates(repo, upstream or os.environ.get("WORKBENCH_UPSTREAM") or self.a.upstream)
         self.own, self.own_checked = False, 0.0
 
@@ -130,11 +139,34 @@ class App:
             files.append(self.repo / self.a.overview)
         return tuple(f.stat().st_mtime_ns if f.exists() else 0 for f in dict.fromkeys(files))
 
+    def code_files(self) -> list[Path]:
+        return [f for d in (self.repo / "workbench", self.repo / "viewer", self.repo / "finder") if d.is_dir()
+                for f in sorted(d.rglob("*")) if f.suffix in CODE and "__pycache__" not in f.parts]
+
     def code_stamp(self) -> tuple:
         """The page's own code, the viewer's and the claim finder's: when one changes, the page must restart."""
-        files = [f for d in (self.repo / "workbench", self.repo / "viewer", self.repo / "finder") if d.is_dir()
-                 for f in sorted(d.rglob("*")) if f.suffix in CODE and "__pycache__" not in f.parts]
-        return tuple((str(f), f.stat().st_mtime_ns) for f in files)
+        return tuple((str(f), f.stat().st_mtime_ns) for f in self.code_files())
+
+    def code_digest(self) -> str:
+        digest = hashlib.sha256()
+        for f in self.code_files():
+            digest.update(str(f).encode() + b"\0" + f.read_bytes() + b"\0")
+        return digest.hexdigest()
+
+    def code_changed(self) -> bool:
+        """Whether the page's own code differs from the code running. The files' times are looked at
+        first; when only their times changed (an Update that failed and was undone by git merge
+        --abort puts every file back, with a new time), their bytes say there is no change."""
+        now = self.code_stamp()
+        if now == self.code:
+            return False
+        try:
+            same = self.code_digest() == self.code_bytes
+        except OSError:      # a file that went away while it was read: a change
+            same = False
+        if same:
+            self.code = now
+        return not same
 
     def fresh(self) -> None:
         """Take a changed steps.toml or page (after an update, say) without a restart."""
@@ -219,7 +251,7 @@ class App:
             out.append({"kind": "update", "text": "There is an update to the homework, with these changes:",
                         "items": u.missing[:8] + ([f"and {len(u.missing) - 8} more"] if len(u.missing) > 8 else []),
                         "button": "Update"})
-        if self.code != self.code_stamp() and "restart" not in self.notices:
+        if "restart" not in self.notices and self.code_changed():
             self.notice("restart", "The homework page itself has changed. Restart it: press Ctrl-C in the "
                         "terminal where it runs, then run uv run python -m workbench again.")
         return out + list(self.notices.values())
@@ -255,12 +287,22 @@ class App:
 
     def tick(self) -> None:
         self.fresh()
-        if not self.own_repo():      # not a clone of the student's fork: nothing to commit into
+        if not self.own_repo() or self.paused():   # not the student's own clone, or a merge half done
             return
         self.commit_finished_parts()
         self.commit_changes()
         if self.push_due and time.time() >= self.push_due:
             self.push_soon()
+
+    def paused(self) -> bool:
+        """Whether git is in the middle of a merge, a rebase, a cherry-pick or a revert in this folder.
+        Then nothing is committed or pushed, because a commit would conclude a merge that stopped on a
+        conflict, conflict markers and all, and the page says so in one line until it is over. It is
+        looked at under the commit lock, so the Update button's own merge is never taken for one."""
+        with self.commit_lock:
+            what = self.updates.busy()
+            self.notice("paused", PAUSED.format(what) if what else None)
+        return what is not None
 
     def git(self, *args: str, timeout: float = 60, env: dict | None = None):
         return git(self.repo, *args, timeout=timeout, env=env)
@@ -272,8 +314,9 @@ class App:
     def save(self, message: str, empty: bool = False) -> bool:
         """Commit the student's work as `message`: everything in the repository that isn't
         git-ignored, with TRANSCRIPT.md and record/ written first, but never uv.lock and never a
-        file holding something like a key. True if committed (or nothing to commit)."""
-        if not self.own_repo():
+        file holding something like a key. True if committed (or nothing to commit). Never while
+        git is in the middle of a merge or the like (paused())."""
+        if not self.own_repo() or self.paused():
             return False
         with self.commit_lock:
             ids = {s.id: sid for s in self.a.steps if (sid := self.hub.known_id(s.id))}
@@ -397,6 +440,9 @@ class App:
         so in one sentence, and tries again every few minutes."""
         if not self.own_repo():
             return
+        if self.updates.busy():                          # a merge half done: push once it is over
+            self.push_due = time.time() + 10
+            return
         if not self.push_lock.acquire(blocking=False):   # a push is running: push again after it
             self.push_due = time.time() + 10
             return
@@ -457,12 +503,14 @@ class App:
         if not result["ok"]:
             say(f"The update didn't go through: {result.get('why', '')}")
             self.notice("update-failed", "The update could not be applied automatically, and nothing in your "
-                        f"files was changed. Please {HELP}.", missing=list(self.updates.missing))
+                        "files was changed. You can update by hand, with Claude, in three steps:",
+                        items=UPDATE_BY_HAND, after=f"If that does not work, {HELP}.",
+                        missing=list(self.updates.missing))
             return {"ok": False}
         self.notice("update-failed", None)
         self.fresh()
         self.push_soon()
-        if self.code != self.code_stamp():
+        if self.code_changed():
             self.notice("restart", "The update changed the homework page itself. Restart it: press Ctrl-C in "
                         "the terminal where it runs, then run uv run python -m workbench again.")
         else:

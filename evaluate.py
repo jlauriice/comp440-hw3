@@ -24,6 +24,7 @@ folder's claims again with the agent as it is now, add --fresh:
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
 import time
 from collections import defaultdict
@@ -47,18 +48,56 @@ AGENT_FILES = ["instructions.md", "agent.py", "wiki.py"]
 LOOPS = {"yours": ("my_loop.py", "yours (my_loop.py)"),
          "reference": ("reference_loop.py", "the reference loop (reference_loop.py)")}
 NOTES = []  # said again after the tables, where they will be seen
+HERE = Path(__file__).parent
+# The commit the homework page's Update button makes (workbench/updates.py).
+UPDATE = "Take the class repository's updates"
+
+
+def fingerprint(read):
+    """The fingerprint of the agent made of the files that read(name) gives."""
+    digest = hashlib.sha256()
+    loop = agent.which_loop()
+    digest.update(loop.encode())  # even if the two loop files were the same
+    for name in AGENT_FILES + [LOOPS[loop][0]]:
+        digest.update(read(name))
+    return digest.hexdigest()[:12]
 
 
 def agent_version():
     """A short fingerprint of the agent's files and of the loop in use. It is
     saved with each of the agent's results, so a later run can tell whether the
     results in a folder were made by the agent as it is now."""
-    digest = hashlib.sha256()
-    loop = agent.which_loop()
-    digest.update(loop.encode())  # even if the two loop files were the same
-    for name in AGENT_FILES + [LOOPS[loop][0]]:
-        digest.update((Path(__file__).parent / name).read_bytes())
-    return digest.hexdigest()[:12]
+    return fingerprint(lambda name: (HERE / name).read_bytes())
+
+
+def versions_before_updates():
+    """The agent's fingerprints just before the homework page's Updates that the student has
+    changed nothing since. The latest Update merge must have made the agent's files exactly as
+    they are now; its first parent, the student's own work that Update saved, gives one
+    fingerprint. Then back through earlier Update merges, for as long as the student's side of
+    the newer one holds exactly what the older one made. Results saved with one of these
+    fingerprints were made by the same agent: only the class repository's update came between.
+    Anything unusual or any error (no git, a shallow clone, a detached HEAD, a file it cannot
+    read) gives none, and the run goes on as it always has."""
+    def git(*args):
+        return subprocess.run(["git", "-C", str(HERE), *args], capture_output=True, check=True,
+                              timeout=2).stdout
+
+    try:
+        shallow, branch = git("rev-parse", "--is-shallow-repository", "--abbrev-ref", "HEAD").split()
+        if shallow != b"false" or branch == b"HEAD":
+            return set()
+        names = AGENT_FILES + [LOOPS[agent.which_loop()][0]]
+        merges = git("log", "-5", "--first-parent", "--merges", "--format=%H", f"--grep=^{UPDATE}$")
+        now, found = [(HERE / name).read_bytes() for name in names], set()
+        for merge in merges.decode().split():
+            if [git("show", f"{merge}:{name}") for name in names] != now:
+                break       # the student changed one of the agent's files after this merge
+            now = [git("show", f"{merge}^1:{name}") for name in names]
+            found.add(fingerprint(lambda name, files=dict(zip(names, now)): files[name]))
+        return found
+    except Exception:  # noqa: BLE001  whatever went wrong, behave as before
+        return set()
 
 
 def saved(path):
@@ -70,12 +109,20 @@ def saved(path):
 
 def check_saved_agent(out_dir, items):
     """Results saved by an earlier version of the agent are easy to mistake for
-    new ones. Say so, and refuse to mix old and new results in one folder."""
+    new ones. Say so, and refuse to mix old and new results in one folder, unless
+    only the homework page's Update came between them (versions_before_updates())."""
     done = saved(out_dir / "agent.jsonl")
     old = [row for row in done.values() if row.get("agent_version") not in (None, agent_version())]
     if not old:
         return
     todo = [item for item in items if item["id"] not in done]
+    if {row["agent_version"] for row in old} <= versions_before_updates():
+        if todo:
+            some = (f"the {len(old)} saved results" if len(old) == len(done) > 1 else
+                    "the saved result" if len(done) == 1 else f"{len(old)} of the {len(done)} saved results")
+            print(f"Carrying on: {some} in {out_dir} {'was' if len(old) == 1 else 'were'} made before "
+                  "the homework page's Update, which did not change how your agent works.", flush=True)
+        return
     why = "instructions.md, agent.py, wiki.py or the agent's loop has changed since"
     if todo:
         sys.exit(f"Stopped: {out_dir} has {len(old)} saved results from an earlier version of "
@@ -116,6 +163,9 @@ def run_one(method, item):
                   correct=is_correct(item, result["verdict"]))
     if method == "agent":
         result["agent_version"] = agent_version()
+        # The limit it ran under: a loop that does not warn the model can pass it within one
+        # reply, so the results viewer cannot tell it from the counts.
+        result["max_steps"] = agent.MAX_STEPS
     return result
 
 
@@ -194,9 +244,9 @@ def report(items, results_by_method, out_dir=None):
     failed = sum("error" in r for r in every_run)
     no_verdict = sum(r["verdict"] is None for r in every_run) - failed
     if no_verdict:
-        say(f"\n{no_verdict} runs gave no verdict (for example a refusal, out of steps or "
-            "its answer rejected three times). "
-            "They count as wrong. Look for them in the saved files.")
+        say(f"\n{no_verdict} runs gave no verdict (for example a refusal, or out of lookups). "
+            "They count as wrong. The results viewer lists them on this run's page, under "
+            "\"Claims with no verdict, or that stopped with an error\".")
     if failed:
         say(f"\n{failed} runs stopped with an error, such as Wikipedia refusing requests. "
             "They count as wrong above, but they were not saved: run the same command "

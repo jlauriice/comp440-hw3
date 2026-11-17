@@ -635,7 +635,7 @@ def accuracy_section(run: R.Run) -> str:
         out.append('<ul>' + "".join(bad) + '</ul>')
         out.append(more("Why a verdict can be missing", "These claims count as not matching above. A verdict is "
                         "missing when the program could not get one from the model: for example, the model "
-                        "declined, the agent used all its lookups, or its answer was sent back three times. Each "
+                        "declined, or the agent used all its lookups. Each "
                         "claim's page shows the text that was saved with it."))
     else:
         out.append('<p class="small">Every saved result has a verdict.</p>')
@@ -950,12 +950,19 @@ def result_card(method: str, row: dict | None, note: str = "", anchor_for: str =
 
 
 def quote_where(row: dict, place: dict, n: int, who: str) -> str:
+    # Whether the quote appears word for word in what the agent read, by the test agent.py's check
+    # of quotes makes (capital letters, curly quote marks and runs of spaces aside). The loop may not
+    # have made that check, so it is said beside every quote.
+    if place["read"]:
+        mark = "<strong>It appears word for word in what the agent read.</strong>"
+    else:
+        mark = "<strong>It does not appear word for word in anything the agent read.</strong>"
+    if place["across"]:
+        return (mark + " It runs from the end of one result into the start of the next, so it is not in "
+                "any one of them.")
     if not place["hits"]:
-        if place["across"]:
-            return ("This quote is not in any one text the agent read: it runs from the end of one "
-                    "result into the start of the next.")
-        return "This quote is not in anything the agent read."
-    bits = []
+        return mark
+    bits = [mark]
     for hit in place["hits"]:
         call = row["trace"][hit["call"]]
         # A trace's numbered lines are entries (a lookup or an answer); "Lookups" counts only lookups.
@@ -968,7 +975,7 @@ def quote_where(row: dict, place: dict, n: int, who: str) -> str:
         elif page:
             extra = " · " + page_link(page)
         if call["tool"] == "search":
-            where += " (a search result's short snippet)"
+            where += " (a search result's short snippet, which does not count as read)"
         bits.append(f"Found in {where}, highlighted below{extra}.")
     return " ".join(bits)
 
@@ -1008,12 +1015,15 @@ def trace_section(method: str, row: dict, full: bool, toggle: str, heading: str 
 
 
 def trace_counts(trace: list) -> str:
-    """What the entries were: lookups, lookups refused after the limit, answers, reminders."""
+    """What the entries were: lookups, lookups refused after the limit, answers, reminders, and
+    the model's refusal to check the claim."""
     refused = [R.OUT_OF_STEPS.search(c["result"]) for c in trace]
     refused = [m for m in refused if m]
     answers = sum(1 for c in trace if c["tool"] == "answer")
     reminders = sum(1 for c in trace if c["tool"] == "(reminder)")
-    lookups = len(trace) - len(refused) - answers - reminders
+    declined = sum(1 for c in trace if c["tool"] == "(refusal)")
+    stopped = sum(1 for c in trace if c["tool"] == "(stopped)")
+    lookups = len(trace) - len(refused) - answers - reminders - declined - stopped
     bits = [plural(lookups, "lookup") + " (<code>search</code>, <code>read</code> or <code>wikidata</code>)"]
     if refused:
         bits.append(plural(len(refused), "lookup") + " refused because the agent had already used all "
@@ -1022,6 +1032,10 @@ def trace_counts(trace: list) -> str:
         bits.append(plural(answers, "answer"))
     if reminders:
         bits.append(plural(reminders, "reminder") + " from the loop to call answer()")
+    if declined:
+        bits.append("the model's refusal to check the claim")
+    if stopped:
+        bits.append("the stop after the agent had asked the model too many times")
     return f'This trace has {plural(len(trace), "entry", "entries")}: ' + and_list(bits) + "."
 
 

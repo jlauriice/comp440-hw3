@@ -23,7 +23,7 @@ PARTS = {
         "0d. Run the agent and read its trace",
     ]),
     1: ("How the agent works", "instructions/part1.md", [
-        "1a. Write the loop",
+        "1a. Design the loop",
         "1b. Be the agent",
         "1c. Watch the agent work",
         "1d. Write the agent's instructions",
@@ -47,6 +47,7 @@ ALL_STEPS = [step for _, _, steps in PARTS.values() for step in steps]
 LABELS = [
     ("**Words in this step:**", False),
     ("**Actions:**", True),
+    ("**Writing your outline:**", False),          # 1a only
     ("**Interpreting output:**", False),
     ("**Write-up:**", True),
     ("**Troubleshooting:**", False),
@@ -193,44 +194,104 @@ def test_no_placeholder_is_left(name):
 
 # ---- step 1a: the student writes the loop -----------------------------------------------------
 
-# The six rules, word for word as the page gives them (the check prints their titles).
-LOOP_RULES = [
-    "1. **Ask the model.** Each turn, send the model the system text, the tools and the whole conversation so "
-    "far, and add the reply to the conversation as the assistant's turn.",
-    "2. **Run its lookups.** For each lookup the reply asks for, call `lookup(name, input)`, add 1 to `steps`, "
-    "and add an entry to `trace`. Keep what `read` and `wikidata` return in `read_so_far`; do not keep what "
-    "`search` returns.",
-    "3. **Send the results back.** After the reply's tool calls are handled, add one user turn to the "
-    "conversation that holds a result for every call, each marked with the id of the call it answers.",
-    "4. **Check the answer.** When the reply calls `answer`, check it with `answer_problem()`. If there is no "
-    "problem, stop and return `finish(...)` with the answer's verdict, evidence and explanation. If there is "
-    "a problem, send back `REJECTED` followed by the problem, and after `MAX_REJECTED` rejected answers stop "
-    "with no verdict.",
-    "5. **Enforce the limit.** Once `steps` has reached `max_steps`, do not run another lookup. The first time, "
-    "send back `OUT_OF_STEPS`, and remember that you sent it. If the model asks for a lookup again on a later "
-    "turn, stop with no verdict.",
-    "6. **Stop when the model stops.** If a reply has no tool call, remind the model with `REMINDER`; if the "
-    "next reply has none either, stop with no verdict. The model is reminded each time it stops calling tools, "
-    "but never twice in a row. If a reply's `stop_reason` is `\"refusal\"`, stop with no verdict.",
-]
+# The titles of the check's five rules (Nov 14), and of the six they replaced. The page lists none.
+LOOP_RULE_TITLES = ["Ask the model", "Make its lookups", "Stop with the answer", "Stop at the limit",
+                    "Count the lookups", "Run its lookups", "Send the results back", "Check the answer",
+                    "Enforce the limit", "Stop when the model stops"]
 
 
 def section_1a():
-    return one_line(sections((ROOT / "instructions/part1.md").read_text(encoding="utf-8"))["1a. Write the loop"])
+    return one_line(sections((ROOT / "instructions/part1.md").read_text(encoding="utf-8"))["1a. Design the loop"])
 
 
-def test_1a_gives_the_six_rules_word_for_word_and_in_order():
+# The instructor's description of the loop (Nov 13: "could we have a prose description instead?"),
+# lightly clarified, and made true of the plainest loop on Nov 14 ("i want to simplify the agent
+# loop to its bare essentials"). It is in 1a's Background, above the line in my_loop.py, in the
+# README, and in 1a's brief, word for word.
+LOOP_DESCRIPTION = (
+    "Your loop should repeatedly call the model with the message history so far, and ask for its next "
+    "step. It should check whether the model has given an answer yet. If not, it should make the lookups "
+    "that step asks for, and add what they return to the history. It should also pay attention to "
+    "whether the loop has reached its limit: a claim that runs out of lookups cannot be decided.")
+
+
+def test_the_loop_is_described_the_same_way_in_four_places():
     page = section_1a()
-    at = [page.find(rule) for rule in LOOP_RULES]
-    assert -1 not in at, f"1a lacks rule(s) {[i + 1 for i, a in enumerate(at) if a == -1]}"
-    assert at == sorted(at)
+    assert LOOP_DESCRIPTION in page[page.index("**Background:**"):page.index("**Writing your outline:**")]
+    readme = one_line((ROOT / "README.md").read_text(encoding="utf-8"))
+    assert "In Part 1 you design the loop around the model, the program that makes it an agent. " \
+        + LOOP_DESCRIPTION in readme
+    source = (ROOT / "my_loop.py").read_text(encoding="utf-8")
+    above = source[:source.index("    # ---- your loop goes below this line (step 1a) ----")].splitlines()
+    comment = []
+    while above and above[-1].strip().startswith("# "):
+        comment.insert(0, above.pop().strip()[2:])
+    assert one_line("\n".join(comment)) == LOOP_DESCRIPTION
+    steps = one_line((ROOT / "steps.toml").read_text(encoding="utf-8"))
+    assert '("' + LOOP_DESCRIPTION + '")' in steps
+    # The wording of Nov 13 said a claim "may end undecided", because the loop then warned the
+    # model at 12 lookups and let it answer, and named "tries at an answer", the check of quotes.
+    # The plainest loop stops at the limit with no verdict: the instructor's own "cannot be decided"
+    # is true again.
+    for text in (page, readme, source, steps):
+        assert "may end undecided" not in text and "tries at an answer" not in text
+        assert "an answer that can be accepted" not in text
 
 
-def test_1a_says_what_is_given_and_what_is_theirs():
+def test_1a_gives_a_background_and_not_the_rules():
+    """1a (Nov 13): the page gives a background, not the rules, and the student meets each rule
+    when the check states it under its first NOT YET line."""
     page = section_1a()
-    for name in ("`agent.py`", "`my_loop.py`", "`reference_loop.py`", "`check_loop.py`",
+    assert "**Background:** The model cannot look anything up by itself" in page
+    assert "when your design breaks a rule, the check states that rule." in page
+    for title in LOOP_RULE_TITLES:
+        assert f"**{title}.**" not in page, title     # no rule's bold title
+    assert "the five rules" not in page and "the six rules" not in page
+
+
+def test_1a_asks_for_the_plainest_loop():
+    """Nov 14, the instructor: "i want to simplify the agent loop to its bare essentials. remove the
+    evidence check." One limit, no check of quotes, and nothing for the student to design for a
+    reply that asks for nothing: the parts take care of it."""
+    page = section_1a()
+    background = page[page.index("**Background:**"):page.index("**Writing your outline:**")]
+    assert "One limit is set for you: 12 lookups for a claim." in background
+    assert ("If it does neither, the parts in `loop_parts.py` remind the model to answer, so your loop "
+            "does not have to.") in background
+    assert "You will not know every detail of the rules when you start." in background
+    for gone in ("evidence check", "3 of its answers", "Two limits", "ask for nothing", "an answer that passes",
+                 "quotes something it never read", "fifteen made-up cases", "six rules"):
+        assert gone not in page, gone
+    assert "eleven made-up cases" in page and "for each of five rules" in page
+
+
+def test_1a_shows_the_outline_style_with_an_example_of_another_shape():
+    """Nov 14: the number-guessing game (count the guesses; repeat: ask, stop if right, stop at 7) had
+    the plainest loop's own shape, line for line. The example shows the style with another shape."""
+    page = section_1a()
+    assert "this is an outline of grading a stack of quizzes, to show the style:" in page
+    assert "For each quiz in the stack:" in page
+    assert "number-guessing" not in page and "7 guesses" not in page
+
+
+def test_1a_says_what_the_page_gives_and_what_is_the_students():
+    """The new 1a (Nov 13): the page names the files and the command, says the arrangement of the
+    loop is the student's, that Claude translates it and adds nothing, and that the student changes
+    the outline, not the Python."""
+    page = section_1a()
+    for name in ("`my_loop.py`", "`loop_parts.py`", "`reference_loop.py`", "`check_loop.py`", "`WRITEUP.md`",
                  "uv run python check_loop.py", "runs/part1/loop-check.txt"):
         assert name in page, f"1a doesn't name {name}"
+    for must in ("It does not say how to arrange the loop: that is your job.",
+                 "In your editor, write your outline in the block under 1a in `WRITEUP.md`.",
+                 "Ask Claude to translate your outline into `my_loop.py`. Claude adds nothing of its own.",
+                 "Then change your outline, not the Python.",
+                 "Say what the loop remembers from one turn to the next",
+                 "Say every way the loop stops, and what it stops with: an answer, or no verdict.",
+                 "each line of your outline is a comment, with Claude's Python for it under it.",
+                 "do not open it before your loop passes the check.",
+                 "Tell Claude: the translation is Claude's to fix."):
+        assert must in page, must
     # No way to keep the reference loop (instructor, Nov 11), anywhere a student reads.
     for name in OWNED:
         text = one_line((ROOT / name).read_text(encoding="utf-8"))
@@ -239,11 +300,31 @@ def test_1a_says_what_is_given_and_what_is_theirs():
             assert gone not in text, (name, gone)
 
 
+def test_1c_asks_for_the_agents_trace_even_for_the_claim_from_1b():
+    """The flow simulations of Nov 14, run B: the student filled the 3-article row from memory of
+    1b and never opened that claim's trace, as the Hint seemed to allow."""
+    page = one_line(sections((ROOT / "instructions/part1.md").read_text(encoding="utf-8"))["1c. Watch the agent work"])
+    assert ("The claim you checked by hand in 1b is one of these. You may choose it as your 3-article claim; "
+            "if you do, read the agent's trace for it as you would any other, and compare it with your own "
+            "lookups: the table asks what the agent did, not what you did.") in page
+    assert "you may choose it as your 3-article claim and compare its trace" not in page
+
+
 def test_nothing_still_says_the_student_reads_the_loop():
     for name in OWNED:
         text = (ROOT / name).read_text(encoding="utf-8")
         for old in ("Read the loop", "read its loop", "Read the agent's loop", "which is the loop"):
             assert old not in text, f"{name} still says {old!r}"
+
+
+def test_2b_says_the_loop_does_not_check_quotes_and_the_viewer_marks_them():
+    """Nov 14: the loop no longer checks quotes, so 2b's Hint no longer says it has. The results viewer
+    marks each quote instead (test_viewer.py)."""
+    page = one_line(sections((ROOT / "instructions/part2.md").read_text(encoding="utf-8"))["2b. Check the evidence yourself"])
+    assert ("**Hint:** The loop the homework asks for does not check the quotes, so under each one the results "
+            "viewer says whether it appears word for word in something the agent read. A quote can be real and "
+            "still not support the verdict.") in page
+    assert "The loop has already checked" not in page
 
 
 def test_each_page_title_names_its_part():
@@ -261,8 +342,7 @@ LEARNING_GOALS = [
     "Understand what makes a program an *agent*. You will study a language model that picks the next "
     "Wikipedia search query, reads the page that comes back, and decides when to stop.",
     "Gain hands-on experience with the loop around the model by writing it yourself: its tools, its "
-    "instructions, its limit of 12 lookups, and the check that every sentence it quotes really appears in "
-    "what it read.",
+    "instructions, and its limit of 12 lookups.",
     "Compare the agent with two simpler methods on your claims, and measure how effective each one is.",
     "Check the agent's evidence yourself, and decide whether accuracy alone is a fair measure of it.",
 ]
@@ -300,6 +380,16 @@ def test_readme_and_writeup_give_the_same_four_learning_goals():
     assert readme == LEARNING_GOALS
     assert writeup == LEARNING_GOALS
     assert readme_after == writeup_after == EXTRA_CREDIT_GOAL
+
+
+def test_1d_asks_for_rules_that_fit_any_claim():
+    """The flow simulations of Nov 14, run C: the student's own rule named a page from one of their
+    12 development claims, and they saw afterwards that it gave the agent part of that answer."""
+    page = one_line(sections((ROOT / "instructions/part1.md").read_text(encoding="utf-8"))["1d. Write the agent's instructions"])
+    assert ("**Hint:** I recommend short, direct rules. Write rules that fit any claim. A rule that names one "
+            "of your 12 development claims, or a page one of them needs, gives the agent part of that claim's "
+            "answer, and the second run then tells you little about your rules. The model does not give the "
+            "same answer every time") in page
 
 
 def test_the_learning_goals_come_before_part_0_and_hold_no_answer():
@@ -349,11 +439,12 @@ def test_nothing_students_read_sends_them_to_the_claim_finder(name):
 # ---- what each part holds -----------------------------------------------------------------------
 
 # The page shows a step's opening (its summary, and in Part 0 and 1b the claim it checks) and then each
-# labeled part as a line that opens with a click. Actions, Write-up and, in 1a, The six rules hold only
-# what the student does and answers, as lists, so that a student who opens them finds the steps and
-# not an explanation; explanations go under the other labels.
-FOLDED = ["Words in this step", "Interpreting output", "Troubleshooting", "Hint"]
-OPEN_LABELS = ["Actions", "Write-up", "The six rules"]
+# labeled part as a line that opens with a click. Actions, Write-up and, in 1a, Writing your outline
+# hold only what the student does and answers, as lists, so that a student who opens them finds the
+# steps and not an explanation; explanations go under the other labels.
+# "Background" (1a) is explanation, like "Words in this step".
+FOLDED = ["Words in this step", "Interpreting output", "Troubleshooting", "Hint", "Background"]
+OPEN_LABELS = ["Actions", "Write-up", "Writing your outline"]
 
 
 def parts(section):
@@ -400,6 +491,16 @@ def test_actions_and_write_up_hold_no_loose_explanation(step):
     assert not loose, f"{step}: move these under Words in this step, Interpreting output, Troubleshooting or Hint: {loose}"
 
 
+def test_2a_says_runs_with_no_verdict_are_not_an_error():
+    """The flow simulations of Nov 14, run A: the report ended "2 runs gave no verdict ...", and 2a's
+    Troubleshooting says to start the run again when its tables end with a line about runs that
+    stopped with an error. A student could read the two as one and start a needless run."""
+    page = one_line(sections((ROOT / "instructions/part2.md").read_text(encoding="utf-8"))["2a. Compare accuracy"])
+    assert ("- The tables end with \"N runs gave no verdict\". That is not an error: the run is finished, and "
+            "those claims count as wrong.") in page
+    assert "its tables end with a line saying some runs stopped with an error. Run" in page   # still there
+
+
 def test_0d_asks_about_wikidata_and_says_how_to_find_out():
     """The instructor, Nov 11: "include a section that asks the user to describe wikidata briefly
     and explain why it may be important to this task." It is 0d's third question, where the
@@ -409,8 +510,8 @@ def test_0d_asks_about_wikidata_and_says_how_to_find_out():
     asked = questions(sections(WRITEUP.read_text(encoding="utf-8"))["0d. Run the agent and read its trace"])
     assert len(asked) == 3 and asked[-1] == question
     page = one_line(sections((ROOT / "instructions/part0.md").read_text(encoding="utf-8"))["0d. Run the agent and read its trace"])
-    assert "4. Find out what Wikidata is: ask Claude, or look at wikidata.org. " \
-           "5. Type your answers to the three questions in `WRITEUP.md`, in your editor, under 0d." in page
+    assert "3. Find out what Wikidata is: ask Claude, or look at wikidata.org. " \
+           "4. Type your answers to the three questions in `WRITEUP.md`, in your editor, under 0d." in page
     assert f"- {question}" in page
 
 
@@ -472,3 +573,18 @@ def test_each_page_opens_with_its_part_and_links_back(n):
     assert "Back to the [assignment page](../README.md)." in text
     before_first_step = text.split("\n## ", 1)[0]
     assert "Back to the [assignment page](../README.md)." in before_first_step
+
+
+def test_3b_says_why_a_continued_session_asks_before_each_edit():
+    """The flow simulations of Nov 14, run C: in a session continued from 3a, each of Claude's edits
+    to my_loop.py asked first. Only 3b's own settings let those edits through (an Edit rule stays
+    with its own step's new session), and its new-session command starts with those settings."""
+    import tomllib
+    page = one_line(sections((ROOT / "instructions/part3.md").read_text(encoding="utf-8"))["3b. Make one change"])
+    assert ("- Claude Code asks you to approve each change to `my_loop.py` or `instructions.md`. That happens in "
+            "a session continued from another step. Approve the change, or start a new session with the "
+            "command on this page, which does not ask.") in page
+    steps = {s["id"]: s for s in tomllib.loads((ROOT / "steps.toml").read_text(encoding="utf-8"))["step"]}
+    assert {"Edit(my_loop.py)", "Edit(instructions.md)"} <= set(steps["3b"]["allow"])
+    others = {i for i, s in steps.items() if i != "3b" and "Edit(instructions.md)" in s.get("allow", [])}
+    assert not others
