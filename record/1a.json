@@ -1,6 +1,6 @@
 {
   "step": "1a",
-  "title": "Write the loop",
+  "title": "Design the loop",
   "session_id": null,
   "conversations": [
     "f989412e-676c-4bba-afc0-eda645d1d2c3",
@@ -8,6 +8,10 @@
   ],
   "complete": false,
   "checkpoints": [
+    {
+      "text": "Your outline is in WRITEUP.md",
+      "reached": false
+    },
     {
       "text": "Your loop in my_loop.py passes every rule of the check",
       "reached": true
@@ -19,12 +23,12 @@
   ],
   "answers": [
     {
-      "question": "What does your loop send to the model on each turn? Give the line numbers in `my_loop.py`.",
+      "question": "Write your outline of the loop in the code block: what it remembers, what it repeats, and every way it stops.",
       "answer": "",
       "written_by": null
     },
     {
-      "question": "What are the ways your loop can end? Give the line number of each.",
+      "question": "List each thing your loop remembers from one turn to the next, and say what would go wrong without it.",
       "answer": "",
       "written_by": null
     },
@@ -312,6 +316,59 @@
       "kind": "asked",
       "text": "how did we get it to run to begin with",
       "time": "2026-11-16T00:41:13-06:00"
+    },
+    {
+      "kind": "asked",
+      "text": "where are we",
+      "time": "2026-11-16T10:04:20-06:00"
+    },
+    {
+      "kind": "ran",
+      "text": "Find the headings in WRITEUP.md",
+      "status": "ok",
+      "file": null,
+      "time": "2026-11-16T10:04:23-06:00"
+    },
+    {
+      "kind": "ran",
+      "text": "Listed files",
+      "status": "ok",
+      "file": null,
+      "time": "2026-11-16T10:04:28-06:00"
+    },
+    {
+      "kind": "asked",
+      "text": "I got an update saying the homework was updated. Not sure how to incorporate that",
+      "time": "2026-11-16T10:04:54-06:00"
+    },
+    {
+      "kind": "ran",
+      "text": "Checked git status",
+      "status": "ok",
+      "file": null,
+      "time": "2026-11-16T10:04:58-06:00"
+    },
+    {
+      "kind": "asked",
+      "text": "I clicked update but it seems not to be working: http://localhost:8450/",
+      "time": "2026-11-16T10:09:49-06:00"
+    },
+    {
+      "kind": "ran",
+      "text": "Checked git status",
+      "status": "error",
+      "file": null,
+      "time": "2026-11-16T10:09:53-06:00"
+    },
+    {
+      "kind": "asked",
+      "text": "You might need to look at the original repo from the professor before I forked it cause remeber I am using a local version",
+      "time": "2026-11-16T10:10:31-06:00"
+    },
+    {
+      "kind": "asked",
+      "text": "okay let's keep going",
+      "time": "2026-11-16T10:14:01-06:00"
     }
   ],
   "told_the_page": [
@@ -321,5 +378,5 @@
       "text": "Ready to read agent.py with you"
     }
   ],
-  "turns": 31
+  "turns": 36
 }
